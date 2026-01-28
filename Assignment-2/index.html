@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperspace Starfield</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        canvas {
+            display: block;
+            background: #000;
+        }
+
+        .controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 12px;
+            border-radius: 8px;
+            color: #fff;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .controls h2 {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #4a9eff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            margin-bottom: 8px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4a9eff;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4a9eff;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+            border: none;
+        }
+
+        .control-group .value {
+            display: inline-block;
+            float: right;
+            color: #4a9eff;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                top: 5px;
+                left: 5px;
+                right: 5px;
+                padding: 10px;
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+
+    <div class="controls">
+        <h2>Hyperspace Controls</h2>
+
+        <div class="control-group">
+            <label>
+                Speed
+                <span class="value" id="speedValue">1.0</span>
+            </label>
+            <input type="range" id="speed" min="0.1" max="15" step="0.1" value="1">
+        </div>
+
+        <div class="control-group">
+            <label>
+                Star Count
+                <span class="value" id="countValue">500</span>
+            </label>
+            <input type="range" id="count" min="100" max="2000" step="50" value="500">
+        </div>
+
+        <div class="control-group">
+            <label>
+                Trail Length
+                <span class="value" id="trailValue">0.05</span>
+            </label>
+            <input type="range" id="trail" min="0.01" max="0.2" step="0.01" value="0.05">
+        </div>
+
+        <div class="control-group">
+            <label>
+                Star Size
+                <span class="value" id="sizeValue">2.0</span>
+            </label>
+            <input type="range" id="size" min="0.5" max="5" step="0.5" value="2">
+        </div>
+
+        <div class="control-group">
+            <label>
+                Acceleration
+                <span class="value" id="accelValue">1.005</span>
+            </label>
+            <input type="range" id="acceleration" min="1.001" max="1.02" step="0.001" value="1.005">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Particle class
+        class Star {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                // Start from random position across the screen
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+
+                // Calculate direction away from center
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const dx = this.x - centerX;
+                const dy = this.y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Normalize direction and set initial speed
+                const speed = Math.random() * 0.5 + 0.1;
+                this.vx = (dx / distance) * speed;
+                this.vy = (dy / distance) * speed;
+
+                // Random size and brightness
+                this.size = Math.random() * config.starSize + 0.5;
+                this.brightness = Math.random() * 0.5 + 0.5;
+
+                // Distance from center (for depth effect)
+                this.z = distance;
+            }
+
+            update() {
+                // Accelerate outward
+                this.vx *= config.acceleration;
+                this.vy *= config.acceleration;
+
+                // Update position
+                this.x += this.vx * config.speed;
+                this.y += this.vy * config.speed;
+
+                // Calculate distance from center
+                const dx = this.x - canvas.width / 2;
+                const dy = this.y - canvas.height / 2;
+                this.z = Math.sqrt(dx * dx + dy * dy);
+
+                // Reset if out of bounds
+                if (this.x < 0 || this.x > canvas.width ||
+                    this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                // Calculate star color based on speed/distance
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                const hue = 200 + speed * 5; // Blue to cyan
+                const alpha = this.brightness;
+
+                // Draw star
+                ctx.beginPath();
+                ctx.fillStyle = `hsla(${hue}, 100%, 80%, ${alpha})`;
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw trail (line from previous position)
+                if (speed > 1) {
+                    const trailLength = Math.min(speed * 3, 50);
+                    const prevX = this.x - this.vx * trailLength * config.speed;
+                    const prevY = this.y - this.vy * trailLength * config.speed;
+
+                    const gradient = ctx.createLinearGradient(prevX, prevY, this.x, this.y);
+                    gradient.addColorStop(0, `hsla(${hue}, 100%, 80%, 0)`);
+                    gradient.addColorStop(1, `hsla(${hue}, 100%, 80%, ${alpha * 0.5})`);
+
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = this.size * 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(prevX, prevY);
+                    ctx.lineTo(this.x, this.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // Configuration
+        const config = {
+            speed: 1,
+            starCount: 500,
+            trailAlpha: 0.05,
+            starSize: 2,
+            acceleration: 1.005
+        };
+
+        // Create stars
+        let stars = [];
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < config.starCount; i++) {
+                stars.push(new Star());
+            }
+        }
+        initStars();
+
+        // Animation loop
+        function animate() {
+            // Create trail effect by drawing semi-transparent black rectangle
+            ctx.fillStyle = `rgba(0, 0, 0, ${config.trailAlpha})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw stars
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Controls
+        document.getElementById('speed').addEventListener('input', (e) => {
+            config.speed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = config.speed.toFixed(1);
+        });
+
+        document.getElementById('count').addEventListener('input', (e) => {
+            config.starCount = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = config.starCount;
+            initStars();
+        });
+
+        document.getElementById('trail').addEventListener('input', (e) => {
+            config.trailAlpha = parseFloat(e.target.value);
+            document.getElementById('trailValue').textContent = config.trailAlpha.toFixed(2);
+        });
+
+        document.getElementById('size').addEventListener('input', (e) => {
+            config.starSize = parseFloat(e.target.value);
+            document.getElementById('sizeValue').textContent = config.starSize.toFixed(1);
+        });
+
+        document.getElementById('acceleration').addEventListener('input', (e) => {
+            config.acceleration = parseFloat(e.target.value);
+            document.getElementById('accelValue').textContent = config.acceleration.toFixed(3);
+        });
+    </script>
+</body>
+</html>
