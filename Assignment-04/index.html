@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stellar Web</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #ccc; }
+  canvas { display: block; }
+
+  #controls {
+    position: fixed; top: 0; right: 0; width: 260px; max-height: 100vh;
+    background: rgba(10,10,30,0.85); padding: 16px; overflow-y: auto;
+    border-left: 1px solid rgba(100,140,255,0.2);
+    transition: transform 0.3s;
+  }
+  #controls.collapsed { transform: translateX(240px); }
+  #controls.collapsed #toggle { transform: rotate(180deg); }
+
+  #toggle {
+    position: absolute; left: -28px; top: 12px; width: 28px; height: 28px;
+    background: rgba(10,10,30,0.85); border: 1px solid rgba(100,140,255,0.2);
+    border-right: none; color: #8af; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; border-radius: 4px 0 0 4px;
+  }
+
+  h2 { font-size: 14px; color: #8af; margin-bottom: 12px; letter-spacing: 1px; }
+  .slider-group { margin-bottom: 10px; }
+  .slider-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; }
+  .slider-group input[type=range] { width: 100%; accent-color: #68f; }
+
+  #stats {
+    margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(100,140,255,0.15);
+  }
+  #stats h3 { font-size: 12px; color: #8af; margin-bottom: 6px; }
+  #stats div { font-size: 11px; margin-bottom: 3px; }
+  #stats span { color: #fff; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="controls">
+  <button id="toggle">◀</button>
+  <h2>STELLAR WEB</h2>
+
+  <div class="slider-group">
+    <label>Node Count <span id="v-count">120</span></label>
+    <input type="range" id="s-count" min="20" max="300" value="120">
+  </div>
+  <div class="slider-group">
+    <label>Connectivity Radius <span id="v-radius">150</span></label>
+    <input type="range" id="s-radius" min="30" max="400" value="150">
+  </div>
+  <div class="slider-group">
+    <label>Edge Thickness <span id="v-thick">1.2</span></label>
+    <input type="range" id="s-thick" min="1" max="40" value="12" step="1">
+  </div>
+  <div class="slider-group">
+    <label>Edge Opacity <span id="v-opacity">0.6</span></label>
+    <input type="range" id="s-opacity" min="0" max="100" value="60">
+  </div>
+  <div class="slider-group">
+    <label>Node Size <span id="v-size">3</span></label>
+    <input type="range" id="s-size" min="1" max="80" value="30">
+  </div>
+  <div class="slider-group">
+    <label>Speed <span id="v-speed">1.0</span></label>
+    <input type="range" id="s-speed" min="1" max="50" value="10">
+  </div>
+  <div class="slider-group">
+    <label>Gravity <span id="v-gravity">1.0</span></label>
+    <input type="range" id="s-gravity" min="0" max="50" value="10">
+  </div>
+  <div class="slider-group">
+    <label>Depth Effect <span id="v-depth">0.7</span></label>
+    <input type="range" id="s-depth" min="0" max="100" value="70">
+  </div>
+
+  <div id="stats">
+    <h3>Network Statistics</h3>
+    <div>Total Edges: <span id="st-edges">0</span></div>
+    <div>Avg Connections: <span id="st-avg">0</span></div>
+    <div>Network Density: <span id="st-density">0%</span></div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+resize();
+addEventListener('resize', resize);
+
+document.getElementById('toggle').onclick = () =>
+  document.getElementById('controls').classList.toggle('collapsed');
+
+// --- params ---
+const P = {
+  count: 120, radius: 150, thick: 1.2, opacity: 0.6,
+  size: 3, speed: 1, depth: 0.7, gravity: 1
+};
+
+const sliders = {
+  count:   { el: 's-count',   vEl: 'v-count',   parse: v => +v,           fmt: v => v },
+  radius:  { el: 's-radius',  vEl: 'v-radius',  parse: v => +v,           fmt: v => v },
+  thick:   { el: 's-thick',   vEl: 'v-thick',   parse: v => v / 10,       fmt: v => (v / 10).toFixed(1) },
+  opacity: { el: 's-opacity', vEl: 'v-opacity', parse: v => v / 100,      fmt: v => (v / 100).toFixed(2) },
+  size:    { el: 's-size',    vEl: 'v-size',    parse: v => v / 10,       fmt: v => (v / 10).toFixed(1) },
+  speed:   { el: 's-speed',   vEl: 'v-speed',   parse: v => v / 10,       fmt: v => (v / 10).toFixed(1) },
+  depth:   { el: 's-depth',   vEl: 'v-depth',   parse: v => v / 100,      fmt: v => (v / 100).toFixed(2) },
+  gravity: { el: 's-gravity', vEl: 'v-gravity', parse: v => v / 10,       fmt: v => (v / 10).toFixed(1) },
+};
+
+for (const [key, s] of Object.entries(sliders)) {
+  const el = document.getElementById(s.el);
+  el.addEventListener('input', () => {
+    P[key] = s.parse(el.value);
+    document.getElementById(s.vEl).textContent = s.fmt(el.value);
+    if (key === 'count') rebuildNodes();
+  });
+}
+
+// --- nodes ---
+let nodes = [];
+
+function makeNode() {
+  const cx = W / 2, cy = H / 2;
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 50 + Math.random() * Math.min(W, H) * 0.4;
+  const x = cx + Math.cos(angle) * dist;
+  const y = cy + Math.sin(angle) * dist;
+  // tangential velocity for orbital motion
+  const orbSpeed = 0.3 + Math.random() * 0.7;
+  return {
+    x, y, z: Math.random(),
+    vx: -Math.sin(angle) * orbSpeed + (Math.random() - 0.5) * 0.3,
+    vy:  Math.cos(angle) * orbSpeed + (Math.random() - 0.5) * 0.3,
+    vz: (Math.random() - 0.5) * 0.004,
+    hue: 200 + Math.random() * 60,
+    mass: 0.5 + Math.random() * 2.5
+  };
+}
+
+function rebuildNodes() {
+  while (nodes.length < P.count) nodes.push(makeNode());
+  if (nodes.length > P.count) nodes.length = P.count;
+}
+rebuildNodes();
+
+// --- sun (fixed at center, immune to particle gravity) ---
+const sun = { mass: 500 };
+
+// --- animation ---
+function frame() {
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(0, 0, W, H);
+
+  const spd = P.speed;
+  const G = 0.08 * P.gravity;
+  const softening = 30;
+  const sunX = W / 2, sunY = H / 2;
+  const sunSoftening = 60;
+
+  // sun gravity on each particle (sun is NOT affected back)
+  for (const n of nodes) {
+    const dx = sunX - n.x, dy = sunY - n.y;
+    const d2 = dx * dx + dy * dy;
+    const d = Math.sqrt(d2 + sunSoftening * sunSoftening);
+    const force = G * sun.mass * n.mass / (d * d);
+    n.vx += dx / d * force / n.mass * spd;
+    n.vy += dy / d * force / n.mass * spd;
+  }
+
+  // weaker inter-particle gravity
+  const pG = G * 0.02;
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    for (let j = i + 1; j < nodes.length; j++) {
+      const b = nodes[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d2 = dx * dx + dy * dy;
+      const d = Math.sqrt(d2 + softening * softening);
+      const gForce = pG * a.mass * b.mass / (d * d);
+      let fx = dx / d * gForce;
+      let fy = dy / d * gForce;
+
+      // repulsion at close range
+      if (d < 20) {
+        const repulse = (20 - d) / 20 * 0.4;
+        fx -= dx / d * repulse;
+        fy -= dy / d * repulse;
+      }
+
+      a.vx += fx / a.mass * spd;
+      a.vy += fy / a.mass * spd;
+      b.vx -= fx / b.mass * spd;
+      b.vy -= fy / b.mass * spd;
+    }
+  }
+
+  // update positions
+  for (const n of nodes) {
+    n.vx *= 0.999; n.vy *= 0.999;
+    const vm = 3;
+    n.vx = Math.max(-vm, Math.min(vm, n.vx));
+    n.vy = Math.max(-vm, Math.min(vm, n.vy));
+
+    n.x += n.vx * spd;
+    n.y += n.vy * spd;
+    n.z += n.vz * spd;
+
+    // wrap around screen edges
+    if (n.x < 0) n.x += W; else if (n.x > W) n.x -= W;
+    if (n.y < 0) n.y += H; else if (n.y > H) n.y -= H;
+    if (n.z < 0 || n.z > 1) n.vz *= -1;
+    n.z = Math.max(0, Math.min(1, n.z));
+  }
+
+  // edges
+  let totalEdges = 0;
+  const connCount = new Uint16Array(nodes.length);
+  const r2 = P.radius * P.radius;
+
+  ctx.lineWidth = P.thick;
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    for (let j = i + 1; j < nodes.length; j++) {
+      const b = nodes[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < r2) {
+        const d = Math.sqrt(d2);
+        const t = 1 - d / P.radius;
+        const avgZ = (a.z + b.z) / 2;
+        const depthFade = 1 - P.depth * (1 - avgZ);
+        const alpha = t * P.opacity * depthFade;
+        const hue = (a.hue + b.hue) / 2 + d * 0.1;
+        ctx.strokeStyle = `hsla(${hue},70%,60%,${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        totalEdges++;
+        connCount[i]++;
+        connCount[j]++;
+      }
+    }
+  }
+
+  // nodes
+  const depthMul = P.depth;
+  for (const n of nodes) {
+    const scale = 1 - depthMul * (1 - n.z);
+    const r = P.size * (0.5 + scale * 0.5) * (0.6 + n.mass * 0.25);
+    const pulse = 1 + 0.15 * Math.sin(Date.now() * 0.003 + n.hue);
+    const alpha = 0.5 + 0.5 * scale;
+    ctx.fillStyle = `hsla(${n.hue},80%,70%,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r * pulse, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // draw sun with glow
+  const sunPulse = 1 + 0.05 * Math.sin(Date.now() * 0.002);
+  const sunR = 18 * sunPulse;
+  const glow = ctx.createRadialGradient(sunX, sunY, sunR * 0.3, sunX, sunY, sunR * 4);
+  glow.addColorStop(0, 'rgba(255,220,100,0.9)');
+  glow.addColorStop(0.3, 'rgba(255,180,50,0.3)');
+  glow.addColorStop(0.7, 'rgba(255,120,20,0.08)');
+  glow.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR * 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffe080';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // stats
+  const nc = nodes.length;
+  let sumConn = 0;
+  for (let i = 0; i < nc; i++) sumConn += connCount[i];
+  const avg = nc ? (sumConn / nc).toFixed(1) : 0;
+  const maxEdges = nc * (nc - 1) / 2;
+  const density = maxEdges ? (totalEdges / maxEdges * 100).toFixed(1) : 0;
+  document.getElementById('st-edges').textContent = totalEdges;
+  document.getElementById('st-avg').textContent = avg;
+  document.getElementById('st-density').textContent = density + '%';
+
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

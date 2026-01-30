@@ -3,26 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assignment 1</title>
+    <title>Star Wars - Hello World</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #000;
+            overflow: hidden;
         }
-        h1 {
-            font-size: 3rem;
-            text-align: center;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            font-size: 80px;
+            color: #FFE81F;
+            text-shadow:
+                0 0 10px #FFE81F,
+                0 0 20px #FFE81F,
+                0 0 30px #FFE81F,
+                4px 4px 8px rgba(0, 0, 0, 0.8);
+            letter-spacing: 8px;
+            z-index: 10;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .subtitle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, 80px);
+            font-family: 'Arial', sans-serif;
+            font-size: 32px;
+            color: #FFE81F;
+            text-shadow:
+                0 0 8px #FFE81F,
+                0 0 15px #FFE81F,
+                2px 2px 6px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            letter-spacing: 2px;
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Arial', sans-serif;
+            font-size: 24px;
+            color: #FFE81F;
+            text-shadow:
+                0 0 5px #FFE81F,
+                0 0 10px #FFE81F,
+                2px 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow:
+                    0 0 10px #FFE81F,
+                    0 0 20px #FFE81F,
+                    0 0 30px #FFE81F,
+                    4px 4px 8px rgba(0, 0, 0, 0.8);
+            }
+            to {
+                text-shadow:
+                    0 0 20px #FFE81F,
+                    0 0 30px #FFE81F,
+                    0 0 40px #FFE81F,
+                    0 0 50px #FFE81F,
+                    4px 4px 8px rgba(0, 0, 0, 0.8);
+            }
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .star {
+            fill: white;
+            filter: drop-shadow(0 0 2px white);
+            animation: twinkle 3s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        #deathStar {
+            cursor: pointer;
+        }
+
+        #laser {
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        #laser.firing {
+            animation: laserFire 1.5s ease-out;
+        }
+
+        @keyframes laserFire {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            100% { opacity: 0; }
         }
     </style>
 </head>
 <body>
-    <h1>Hello from Assignment 1!</h1>
+    <div class="container">
+        <svg viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid slice">
+            <defs>
+                <linearGradient id="destroyerGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#d0d0d0;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#a8a8a8;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#787878;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="towerGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#e0e0e0;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#909090;stop-opacity:1" />
+                </linearGradient>
+                <radialGradient id="laserGlow">
+                    <stop offset="0%" style="stop-color:#00ff00;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#00dd00;stop-opacity:0.8" />
+                    <stop offset="100%" style="stop-color:#00aa00;stop-opacity:0" />
+                </radialGradient>
+            </defs>
+
+            <!-- Stars background - many more stars -->
+            <circle class="star" cx="100" cy="150" r="1.5" style="animation-delay: 0s"/>
+            <circle class="star" cx="200" cy="80" r="1" style="animation-delay: 0.5s"/>
+            <circle class="star" cx="350" cy="200" r="1.2" style="animation-delay: 1s"/>
+            <circle class="star" cx="450" cy="120" r="1" style="animation-delay: 1.5s"/>
+            <circle class="star" cx="600" cy="180" r="1.5" style="animation-delay: 0.3s"/>
+            <circle class="star" cx="750" cy="100" r="1" style="animation-delay: 0.8s"/>
+            <circle class="star" cx="850" cy="220" r="1.2" style="animation-delay: 1.2s"/>
+            <circle class="star" cx="920" cy="160" r="1" style="animation-delay: 0.6s"/>
+            <circle class="star" cx="150" cy="600" r="1.5" style="animation-delay: 1.8s"/>
+            <circle class="star" cx="300" cy="650" r="1" style="animation-delay: 0.9s"/>
+            <circle class="star" cx="500" cy="700" r="1.2" style="animation-delay: 1.4s"/>
+            <circle class="star" cx="700" cy="620" r="1" style="animation-delay: 0.7s"/>
+            <circle class="star" cx="850" cy="680" r="1.5" style="animation-delay: 1.1s"/>
+            <circle class="star" cx="950" cy="730" r="1" style="animation-delay: 1.6s"/>
+            <circle class="star" cx="80" cy="400" r="1.2" style="animation-delay: 0.4s"/>
+            <circle class="star" cx="950" cy="450" r="1" style="animation-delay: 1.3s"/>
+            <circle class="star" cx="250" cy="420" r="1.5" style="animation-delay: 1.7s"/>
+            <circle class="star" cx="780" cy="380" r="1" style="animation-delay: 0.2s"/>
+            <circle class="star" cx="50" cy="250" r="1.3" style="animation-delay: 0.6s"/>
+            <circle class="star" cx="180" cy="320" r="0.8" style="animation-delay: 1.9s"/>
+            <circle class="star" cx="320" cy="90" r="1.1" style="animation-delay: 0.3s"/>
+            <circle class="star" cx="520" cy="50" r="1.4" style="animation-delay: 1.2s"/>
+            <circle class="star" cx="680" cy="270" r="0.9" style="animation-delay: 0.8s"/>
+            <circle class="star" cx="820" cy="340" r="1.6" style="animation-delay: 1.5s"/>
+            <circle class="star" cx="890" cy="520" r="1" style="animation-delay: 0.5s"/>
+            <circle class="star" cx="970" cy="600" r="1.2" style="animation-delay: 1.8s"/>
+            <circle class="star" cx="40" cy="720" r="1.5" style="animation-delay: 0.9s"/>
+            <circle class="star" cx="220" cy="780" r="0.8" style="animation-delay: 1.4s"/>
+            <circle class="star" cx="420" cy="650" r="1.3" style="animation-delay: 0.7s"/>
+            <circle class="star" cx="560" cy="560" r="1.1" style="animation-delay: 1.1s"/>
+            <circle class="star" cx="640" cy="730" r="1.4" style="animation-delay: 0.4s"/>
+            <circle class="star" cx="120" cy="480" r="0.9" style="animation-delay: 1.6s"/>
+            <circle class="star" cx="380" cy="410" r="1.2" style="animation-delay: 0.2s"/>
+            <circle class="star" cx="480" cy="340" r="1" style="animation-delay: 1.3s"/>
+            <circle class="star" cx="720" cy="460" r="1.5" style="animation-delay: 0.6s"/>
+            <circle class="star" cx="900" cy="380" r="0.8" style="animation-delay: 1.7s"/>
+            <circle class="star" cx="160" cy="540" r="1.3" style="animation-delay: 1s"/>
+            <circle class="star" cx="280" cy="230" r="1.1" style="animation-delay: 0.5s"/>
+            <circle class="star" cx="540" cy="280" r="1.4" style="animation-delay: 1.9s"/>
+            <circle class="star" cx="660" cy="150" r="0.9" style="animation-delay: 0.8s"/>
+            <circle class="star" cx="800" cy="560" r="1.2" style="animation-delay: 1.2s"/>
+            <circle class="star" cx="930" cy="290" r="1" style="animation-delay: 0.3s"/>
+            <circle class="star" cx="70" cy="340" r="1.5" style="animation-delay: 1.5s"/>
+            <circle class="star" cx="340" cy="520" r="0.8" style="animation-delay: 0.7s"/>
+            <circle class="star" cx="460" cy="440" r="1.3" style="animation-delay: 1.1s"/>
+            <circle class="star" cx="590" cy="370" r="1.1" style="animation-delay: 0.9s"/>
+            <circle class="star" cx="760" cy="640" r="1.4" style="animation-delay: 1.4s"/>
+            <circle class="star" cx="880" cy="80" r="0.9" style="animation-delay: 0.4s"/>
+            <circle class="star" cx="190" cy="190" r="1.2" style="animation-delay: 1.8s"/>
+            <circle class="star" cx="410" cy="760" r="1" style="animation-delay: 0.6s"/>
+            <circle class="star" cx="125" cy="95" r="1.4" style="animation-delay: 2.1s"/>
+            <circle class="star" cx="265" cy="145" r="0.9" style="animation-delay: 0.35s"/>
+            <circle class="star" cx="390" cy="175" r="1.3" style="animation-delay: 1.55s"/>
+            <circle class="star" cx="575" cy="95" r="1.1" style="animation-delay: 0.75s"/>
+            <circle class="star" cx="715" cy="135" r="1.5" style="animation-delay: 1.95s"/>
+            <circle class="star" cx="835" cy="185" r="0.8" style="animation-delay: 0.45s"/>
+            <circle class="star" cx="975" cy="105" r="1.2" style="animation-delay: 1.65s"/>
+            <circle class="star" cx="45" cy="285" r="1.4" style="animation-delay: 0.55s"/>
+            <circle class="star" cx="205" cy="365" r="1" style="animation-delay: 1.85s"/>
+            <circle class="star" cx="365" cy="295" r="1.3" style="animation-delay: 0.25s"/>
+            <circle class="star" cx="505" cy="385" r="0.9" style="animation-delay: 1.45s"/>
+            <circle class="star" cx="625" cy="325" r="1.5" style="animation-delay: 0.65s"/>
+            <circle class="star" cx="805" cy="405" r="1.1" style="animation-delay: 2s"/>
+            <circle class="star" cx="945" cy="345" r="1.2" style="animation-delay: 0.85s"/>
+            <circle class="star" cx="95" cy="565" r="1.4" style="animation-delay: 1.25s"/>
+            <circle class="star" cx="235" cy="585" r="0.8" style="animation-delay: 0.95s"/>
+            <circle class="star" cx="375" cy="635" r="1.3" style="animation-delay: 1.75s"/>
+            <circle class="star" cx="515" cy="615" r="1.1" style="animation-delay: 0.15s"/>
+            <circle class="star" cx="675" cy="565" r="1.5" style="animation-delay: 1.35s"/>
+            <circle class="star" cx="815" cy="715" r="1" style="animation-delay: 0.55s"/>
+            <circle class="star" cx="915" cy="655" r="1.2" style="animation-delay: 1.05s"/>
+            <circle class="star" cx="65" cy="180" r="1.3" style="animation-delay: 2.2s"/>
+            <circle class="star" cx="155" cy="260" r="0.9" style="animation-delay: 0.4s"/>
+            <circle class="star" cx="305" cy="310" r="1.4" style="animation-delay: 1.6s"/>
+            <circle class="star" cx="435" cy="245" r="1.1" style="animation-delay: 0.8s"/>
+            <circle class="star" cx="565" cy="215" r="1.2" style="animation-delay: 2.1s"/>
+            <circle class="star" cx="695" cy="305" r="0.8" style="animation-delay: 0.5s"/>
+            <circle class="star" cx="825" cy="265" r="1.5" style="animation-delay: 1.7s"/>
+            <circle class="star" cx="965" cy="235" r="1.3" style="animation-delay: 0.9s"/>
+            <circle class="star" cx="30" cy="445" r="1.1" style="animation-delay: 1.3s"/>
+            <circle class="star" cx="175" cy="495" r="1.4" style="animation-delay: 0.6s"/>
+            <circle class="star" cx="325" cy="455" r="0.9" style="animation-delay: 1.9s"/>
+            <circle class="star" cx="445" cy="505" r="1.2" style="animation-delay: 0.3s"/>
+            <circle class="star" cx="615" cy="485" r="1.5" style="animation-delay: 1.5s"/>
+            <circle class="star" cx="745" cy="525" r="1" style="animation-delay: 0.7s"/>
+            <circle class="star" cx="865" cy="495" r="1.3" style="animation-delay: 2s"/>
+            <circle class="star" cx="985" cy="545" r="1.1" style="animation-delay: 1.1s"/>
+            <circle class="star" cx="110" cy="715" r="1.4" style="animation-delay: 0.2s"/>
+            <circle class="star" cx="260" cy="695" r="1.2" style="animation-delay: 1.8s"/>
+            <circle class="star" cx="355" cy="745" r="0.8" style="animation-delay: 0.5s"/>
+            <circle class="star" cx="475" cy="775" r="1.5" style="animation-delay: 1.4s"/>
+            <circle class="star" cx="605" cy="685" r="1.3" style="animation-delay: 0.8s"/>
+            <circle class="star" cx="735" cy="755" r="1.1" style="animation-delay: 2.2s"/>
+            <circle class="star" cx="895" cy="745" r="1.2" style="animation-delay: 0.9s"/>
+            <circle class="star" cx="135" cy="125" r="1" style="animation-delay: 1.15s"/>
+            <circle class="star" cx="245" cy="165" r="1.4" style="animation-delay: 0.35s"/>
+            <circle class="star" cx="425" cy="135" r="1.2" style="animation-delay: 1.85s"/>
+            <circle class="star" cx="555" cy="145" r="0.9" style="animation-delay: 0.65s"/>
+            <circle class="star" cx="685" cy="195" r="1.3" style="animation-delay: 1.25s"/>
+            <circle class="star" cx="795" cy="155" r="1.5" style="animation-delay: 0.45s"/>
+            <circle class="star" cx="905" cy="115" r="1.1" style="animation-delay: 1.95s"/>
+            <circle class="star" cx="25" cy="365" r="1.2" style="animation-delay: 0.55s"/>
+            <circle class="star" cx="145" cy="395" r="1.4" style="animation-delay: 1.75s"/>
+            <circle class="star" cx="285" cy="355" r="1" style="animation-delay: 0.25s"/>
+            <circle class="star" cx="405" cy="605" r="1.5" style="animation-delay: 1.05s"/>
+
+            <!-- Death Star -->
+            <g id="deathStar" transform="translate(500, 320)">
+                <!-- Main sphere -->
+                <circle cx="0" cy="0" r="180"
+                        fill="url(#destroyerGradient)"
+                        stroke="#505050"
+                        stroke-width="2"/>
+
+                <!-- Superlaser dish (concave depression) -->
+                <circle cx="-50" cy="-60" r="65"
+                        fill="#606060"
+                        opacity="0.9"/>
+
+                <!-- Inner dish ring -->
+                <circle cx="-50" cy="-60" r="50"
+                        fill="#505050"
+                        stroke="#404040"
+                        stroke-width="1.5"/>
+
+                <!-- Dish details - concentric circles -->
+                <circle cx="-50" cy="-60" r="35"
+                        fill="none"
+                        stroke="#404040"
+                        stroke-width="1"/>
+                <circle cx="-50" cy="-60" r="20"
+                        fill="none"
+                        stroke="#404040"
+                        stroke-width="1"/>
+
+                <!-- Central laser aperture -->
+                <circle cx="-50" cy="-60" r="8"
+                        fill="#2a2a2a"/>
+
+                <!-- Equatorial trench -->
+                <ellipse cx="0" cy="0" rx="180" ry="25"
+                         fill="none"
+                         stroke="#404040"
+                         stroke-width="8"
+                         opacity="0.7"/>
+
+                <!-- Trench shadow -->
+                <ellipse cx="0" cy="0" rx="180" ry="25"
+                         fill="#303030"
+                         opacity="0.4"/>
+
+                <!-- Surface panels - horizontal lines -->
+                <path d="M -120,-90 Q 0,-100 120,-90"
+                      fill="none"
+                      stroke="#606060"
+                      stroke-width="1"
+                      opacity="0.6"/>
+                <path d="M -140,-50 Q 0,-55 140,-50"
+                      fill="none"
+                      stroke="#606060"
+                      stroke-width="1"
+                      opacity="0.6"/>
+                <path d="M -140,50 Q 0,55 140,50"
+                      fill="none"
+                      stroke="#606060"
+                      stroke-width="1"
+                      opacity="0.6"/>
+                <path d="M -120,90 Q 0,100 120,90"
+                      fill="none"
+                      stroke="#606060"
+                      stroke-width="1"
+                      opacity="0.6"/>
+
+                <!-- Surface panels - vertical lines -->
+                <line x1="-90" y1="-140" x2="-85" y2="140" stroke="#606060" stroke-width="1" opacity="0.5"/>
+                <line x1="-30" y1="-155" x2="-25" y2="155" stroke="#606060" stroke-width="1" opacity="0.5"/>
+                <line x1="30" y1="-155" x2="35" y2="155" stroke="#606060" stroke-width="1" opacity="0.5"/>
+                <line x1="90" y1="-140" x2="95" y2="140" stroke="#606060" stroke-width="1" opacity="0.5"/>
+
+                <!-- Surface details - small rectangles/panels -->
+                <rect x="80" y="-100" width="15" height="12" fill="#707070" opacity="0.8"/>
+                <rect x="100" y="-70" width="12" height="10" fill="#707070" opacity="0.8"/>
+                <rect x="-110" y="-80" width="18" height="14" fill="#707070" opacity="0.8"/>
+                <rect x="-95" y="70" width="14" height="11" fill="#707070" opacity="0.8"/>
+                <rect x="85" y="80" width="16" height="13" fill="#707070" opacity="0.8"/>
+                <rect x="40" y="-120" width="12" height="10" fill="#707070" opacity="0.8"/>
+                <rect x="-45" y="-130" width="14" height="12" fill="#707070" opacity="0.8"/>
+
+                <!-- Additional surface structures -->
+                <circle cx="110" cy="30" r="6" fill="#808080" opacity="0.7"/>
+                <circle cx="-120" cy="40" r="5" fill="#808080" opacity="0.7"/>
+                <circle cx="60" cy="110" r="7" fill="#808080" opacity="0.7"/>
+                <circle cx="-70" cy="-110" r="6" fill="#808080" opacity="0.7"/>
+
+                <!-- Polygon details on surface -->
+                <polygon points="30,-140 40,-140 35,-125" fill="#606060" opacity="0.6"/>
+                <polygon points="-100,100 -90,105 -95,115" fill="#606060" opacity="0.6"/>
+
+                <!-- Lights/windows -->
+                <rect x="50" y="-30" width="3" height="3" fill="#ff6600" opacity="0.8"/>
+                <rect x="-80" y="10" width="2" height="2" fill="#ff6600" opacity="0.7"/>
+                <rect x="95" y="-20" width="2" height="2" fill="#ff6600" opacity="0.8"/>
+                <rect x="-60" y="85" width="3" height="3" fill="#ff6600" opacity="0.7"/>
+            </g>
+
+            <!-- Superlaser beam (drawn after Death Star so it appears on top) -->
+            <g id="laser">
+                <line x1="450" y1="260" x2="380" y2="-200"
+                      stroke="url(#laserGlow)"
+                      stroke-width="20"
+                      stroke-linecap="round"/>
+                <line x1="450" y1="260" x2="380" y2="-200"
+                      stroke="#00ff00"
+                      stroke-width="8"
+                      stroke-linecap="round"
+                      opacity="0.9"/>
+                <circle cx="450" cy="260" r="15" fill="url(#laserGlow)"/>
+                <circle cx="450" cy="260" r="8" fill="#00ff00"/>
+            </g>
+        </svg>
+
+        <div class="title">HELLO WORLD</div>
+        <div class="subtitle">Brenden Fischer : I'm ready to vibe code</div>
+        <div class="instruction">Click on the Death Star to fire the superlaser!</div>
+    </div>
+
+    <script>
+        const deathStar = document.getElementById('deathStar');
+        const laser = document.getElementById('laser');
+
+        deathStar.addEventListener('click', function() {
+            laser.classList.add('firing');
+
+            setTimeout(() => {
+                laser.classList.remove('firing');
+            }, 1500);
+        });
+    </script>
 </body>
 </html>
