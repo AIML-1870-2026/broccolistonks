@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Space Probe</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #aac;
+    overflow: hidden;
+  }
+  #hud {
+    display: flex;
+    gap: 20px;
+    padding: 8px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  #hud span { color: #4cf; }
+  canvas { border: 1px solid #224; }
+  #mobile {
+    display: none;
+    margin-top: 10px;
+  }
+  .mrow { display: flex; justify-content: center; gap: 4px; margin: 2px 0; }
+  .mbtn {
+    width: 56px; height: 48px;
+    background: #112;
+    border: 1px solid #335;
+    border-radius: 6px;
+    color: #4cf;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .mbtn:active { background: #224; }
+  #aiBtn {
+    background: #112;
+    border: 1px solid #335;
+    color: #f44;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 4px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  #aiBtn.on { color: #4f4; border-color: #4f4; }
+  @media (pointer: coarse) { #mobile { display: block; } }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div>Mission: <span id="scoreVal">0</span></div>
+  <div>Best: <span id="hiVal">0</span></div>
+  <div id="statusText">AWAITING LAUNCH</div>
+  <button id="aiBtn" onclick="toggleAI()">AI: OFF</button>
+</div>
+<canvas id="game"></canvas>
+<div id="mobile">
+  <div class="mrow"><button class="mbtn" data-d="up">&#9650;</button></div>
+  <div class="mrow">
+    <button class="mbtn" data-d="left">&#9664;</button>
+    <button class="mbtn" data-d="pause">||</button>
+    <button class="mbtn" data-d="right">&#9654;</button>
+  </div>
+  <div class="mrow"><button class="mbtn" data-d="down">&#9660;</button></div>
+</div>
+<script>
+// ========== SETUP ==========
+var c = document.getElementById('game');
+var ctx = c.getContext('2d');
+var G = 20; // grid size
+
+// Size the canvas
+var W = Math.floor(Math.min(600, window.innerWidth - 20) / G) * G;
+var H = Math.floor(Math.min(600, window.innerHeight - 140) / G) * G;
+if (W < 200) W = 200;
+if (H < 200) H = 200;
+c.width = W;
+c.height = H;
+var COLS = W / G;
+var ROWS = H / G;
+
+// ========== STARS ==========
+var stars = [];
+for (var i = 0; i < 80; i++) {
+  stars.push({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    s: Math.random() * 2 + 0.5,
+    b: Math.random()
+  });
+}
+
+// ========== STATE ==========
+var snake, dx, dy, ndx, ndy, food, planets, particles;
+var score, hi, baseSpeed, curSpeed, stepTimer;
+var state; // 'menu', 'play', 'paused', 'dead'
+var frameTick = 0;
+var aiEnabled = false;
+
+hi = parseInt(localStorage.getItem('spaceprobe_hi') || '0');
+document.getElementById('hiVal').textContent = hi;
+
+function reset() {
+  if (stepTimer) { clearInterval(stepTimer); clearTimeout(stepTimer); }
+  var cx = Math.floor(COLS / 2);
+  var cy = Math.floor(ROWS / 2);
+  snake = [];
+  for (var i = 3; i >= 0; i--) snake.push({x: cx - i, y: cy});
+  dx = 1; dy = 0; ndx = 1; ndy = 0;
+  score = 0;
+  baseSpeed = 130;
+  curSpeed = baseSpeed;
+  planets = [];
+  particles = [];
+  placeFood();
+  state = 'play';
+  document.getElementById('scoreVal').textContent = 0;
+  document.getElementById('statusText').textContent = 'TRANSMITTING';
+  document.getElementById('statusText').style.color = '#4f4';
+  // Small delay so the snake is visible before first move
+  stepTimer = setTimeout(function() {
+    stepTimer = setInterval(step, curSpeed);
+  }, 500);
+}
+
+// ========== FOOD ==========
+function placeFood() {
+  var tries = 0;
+  do {
+    food = {x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS)};
+    tries++;
+  } while (isOccupied(food.x, food.y) && tries < 500);
+}
+
+function isOccupied(x, y) {
+  for (var i = 0; i < snake.length; i++)
+    if (snake[i].x === x && snake[i].y === y) return true;
+  for (var i = 0; i < planets.length; i++)
+    if (planets[i].x === x && planets[i].y === y) return true;
+  return false;
+}
+
+// ========== PLANETS (gravity wells) ==========
+function addPlanet() {
+  var tries = 0;
+  var p;
+  do {
+    p = {x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS)};
+    tries++;
+    var dist = Math.abs(p.x - snake[0].x) + Math.abs(p.y - snake[0].y);
+  } while ((isOccupied(p.x, p.y) || dist < 5 || (food && p.x === food.x && p.y === food.y)) && tries < 300);
+  // Pick a color
+  var colors = ['#f64','#4af','#a6f','#fa4','#f4a'];
+  p.color = colors[Math.floor(Math.random() * colors.length)];
+  p.radius = 3 + Math.floor(Math.random() * 2); // influence radius in cells
+  planets.push(p);
+}
+
+// ========== PARTICLES ==========
+function emit(cx, cy, color, n) {
+  for (var i = 0; i < n; i++) {
+    particles.push({
+      x: cx * G + G/2, y: cy * G + G/2,
+      vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3,
+      life: 1, color: color, size: Math.random()*2+1
+    });
+  }
+}
+
+// ========== AI ==========
+function aiMove() {
+  if (!aiEnabled || state !== 'play' || !snake.length || !food) return;
+  var head = snake[0];
+  // All 4 possible directions
+  var dirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
+  // Filter out reverse direction
+  dirs = dirs.filter(function(d) { return !(d.x === -dx && d.y === -dy); });
+  // Score each direction
+  var best = null;
+  var bestScore = -Infinity;
+  for (var i = 0; i < dirs.length; i++) {
+    var d = dirs[i];
+    var nx = head.x + d.x;
+    var ny = head.y + d.y;
+    // Wall = very bad
+    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+    // Self collision = very bad
+    var hitSelf = false;
+    for (var j = 0; j < snake.length; j++) {
+      if (snake[j].x === nx && snake[j].y === ny) { hitSelf = true; break; }
+    }
+    if (hitSelf) continue;
+    // Planet collision = very bad
+    var hitPlanet = false;
+    for (var j = 0; j < planets.length; j++) {
+      if (planets[j].x === nx && planets[j].y === ny) { hitPlanet = true; break; }
+    }
+    if (hitPlanet) continue;
+    // Score: prefer closer to food
+    var dist = Math.abs(nx - food.x) + Math.abs(ny - food.y);
+    var s = -dist;
+    // Bonus: look 2 steps ahead - avoid cells that would trap us
+    var futureOptions = 0;
+    var fdirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
+    for (var k = 0; k < fdirs.length; k++) {
+      var fx = nx + fdirs[k].x;
+      var fy = ny + fdirs[k].y;
+      if (fx < 0 || fx >= COLS || fy < 0 || fy >= ROWS) continue;
+      var blocked = false;
+      for (var j = 0; j < snake.length; j++) {
+        if (snake[j].x === fx && snake[j].y === fy) { blocked = true; break; }
+      }
+      if (!blocked) {
+        for (var j = 0; j < planets.length; j++) {
+          if (planets[j].x === fx && planets[j].y === fy) { blocked = true; break; }
+        }
+      }
+      if (!blocked) futureOptions++;
+    }
+    s += futureOptions * 2; // prefer cells with more escape routes
+    if (s > bestScore) { bestScore = s; best = d; }
+  }
+  if (best) { ndx = best.x; ndy = best.y; }
+}
+
+// ========== GAME STEP ==========
+function step() {
+  if (state !== 'play') return;
+
+  aiMove();
+  dx = ndx; dy = ndy;
+  var head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+  // Wall collision
+  if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+    die(); return;
+  }
+
+  // Self collision
+  for (var i = 0; i < snake.length; i++) {
+    if (head.x === snake[i].x && head.y === snake[i].y) {
+      die(); return;
+    }
+  }
+
+  // Planet collision
+  for (var i = 0; i < planets.length; i++) {
+    if (head.x === planets[i].x && head.y === planets[i].y) {
+      die(); return;
+    }
+  }
+
+  snake.unshift(head);
+
+  // Eat food
+  if (head.x === food.x && head.y === food.y) {
+    score += 10;
+    document.getElementById('scoreVal').textContent = score;
+    if (score > hi) {
+      hi = score;
+      localStorage.setItem('spaceprobe_hi', hi);
+      document.getElementById('hiVal').textContent = hi;
+    }
+    emit(head.x, head.y, '#ff0', 10);
+    placeFood();
+    // Speed up slightly
+    if (baseSpeed > 60) baseSpeed -= 2;
+    // Add planet every 40 points
+    if (score % 40 === 0 && planets.length < 10) addPlanet();
+  } else {
+    snake.pop();
+  }
+
+  // Engine trail particle from tail
+  if (snake.length > 1) {
+    var tail = snake[snake.length - 1];
+    if (Math.random() < 0.3) {
+      particles.push({
+        x: tail.x*G+G/2, y: tail.y*G+G/2,
+        vx: (Math.random()-0.5)*1, vy: (Math.random()-0.5)*1,
+        life: 0.6, color: '#48f', size: 1.5
+      });
+    }
+  }
+
+  // Gravity well speed effect: check distance from head to each planet
+  var nearPlanet = false;
+  for (var i = 0; i < planets.length; i++) {
+    var pdist = Math.abs(head.x - planets[i].x) + Math.abs(head.y - planets[i].y);
+    if (pdist <= planets[i].radius) {
+      nearPlanet = true;
+      break;
+    }
+  }
+  var targetSpeed = nearPlanet ? Math.max(30, baseSpeed - 70) : baseSpeed;
+  if (targetSpeed !== curSpeed) {
+    curSpeed = targetSpeed;
+    clearInterval(stepTimer);
+    stepTimer = setInterval(step, curSpeed);
+  }
+}
+
+function die() {
+  state = 'dead';
+  clearInterval(stepTimer);
+  emit(snake[0].x, snake[0].y, '#f44', 20);
+  document.getElementById('statusText').textContent = 'SIGNAL LOST';
+  document.getElementById('statusText').style.color = '#f44';
+}
+
+// ========== INPUT ==========
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (state === 'menu' || state === 'dead') { reset(); return; }
+  }
+  if (e.key === ' ' || e.key === 'p' || e.key === 'P') {
+    e.preventDefault();
+    if (state === 'play') {
+      state = 'paused';
+      document.getElementById('statusText').textContent = 'PAUSED';
+      document.getElementById('statusText').style.color = '#ff0';
+      return;
+    }
+    if (state === 'paused') {
+      state = 'play';
+      document.getElementById('statusText').textContent = 'TRANSMITTING';
+      document.getElementById('statusText').style.color = '#4f4';
+      return;
+    }
+  }
+  // Direction
+  if (state !== 'play') return;
+  if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && dy === 0) { ndx=0; ndy=-1; }
+  if ((e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') && dy === 0) { ndx=0; ndy=1; }
+  if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') && dx === 0) { ndx=-1; ndy=0; }
+  if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') && dx === 0) { ndx=1; ndy=0; }
+  e.preventDefault();
+});
+
+c.addEventListener('click', function() {
+  if (state === 'menu' || state === 'dead') reset();
+});
+
+// Touch swipe
+var ts = null;
+c.addEventListener('touchstart', function(e) {
+  ts = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+  e.preventDefault();
+}, {passive:false});
+c.addEventListener('touchend', function(e) {
+  if (!ts) return;
+  if (state === 'menu' || state === 'dead') { reset(); ts=null; return; }
+  var tdx = e.changedTouches[0].clientX - ts.x;
+  var tdy = e.changedTouches[0].clientY - ts.y;
+  ts = null;
+  if (Math.abs(tdx) < 20 && Math.abs(tdy) < 20) return;
+  if (state !== 'play') return;
+  if (Math.abs(tdx) > Math.abs(tdy)) {
+    if (tdx > 0 && dx === 0) { ndx=1; ndy=0; }
+    else if (tdx < 0 && dx === 0) { ndx=-1; ndy=0; }
+  } else {
+    if (tdy > 0 && dy === 0) { ndx=0; ndy=1; }
+    else if (tdy < 0 && dy === 0) { ndx=0; ndy=-1; }
+  }
+});
+
+// Mobile buttons
+document.querySelectorAll('.mbtn').forEach(function(b) {
+  b.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var d = b.dataset.d;
+    if (d === 'pause') {
+      if (state === 'play') { state='paused'; document.getElementById('statusText').textContent='PAUSED'; document.getElementById('statusText').style.color='#ff0'; }
+      else if (state === 'paused') { state='play'; document.getElementById('statusText').textContent='TRANSMITTING'; document.getElementById('statusText').style.color='#4f4'; }
+      return;
+    }
+    if (state !== 'play') return;
+    if (d==='up' && dy===0) { ndx=0; ndy=-1; }
+    if (d==='down' && dy===0) { ndx=0; ndy=1; }
+    if (d==='left' && dx===0) { ndx=-1; ndy=0; }
+    if (d==='right' && dx===0) { ndx=1; ndy=0; }
+  }, {passive:false});
+});
+
+// ========== DRAWING (rAF only - no game logic) ==========
+function render() {
+  frameTick++;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  for (var i = 0; i < stars.length; i++) {
+    var s = stars[i];
+    s.b += 0.01 * (Math.random() - 0.5);
+    if (s.b < 0.2) s.b = 0.2;
+    if (s.b > 1) s.b = 1;
+    ctx.globalAlpha = s.b * 0.8;
+    ctx.fillStyle = '#ccddff';
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+
+  // Planets (gravity wells)
+  if (planets) {
+    for (var i = 0; i < planets.length; i++) {
+      var p = planets[i];
+      // Gravity field indicator
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x*G+G/2, p.y*G+G/2, p.radius*G, 0, Math.PI*2);
+      ctx.fill();
+      // Planet body
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x*G+G/2, p.y*G+G/2, G/2-1, 0, Math.PI*2);
+      ctx.fill();
+      // Highlight
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(p.x*G+G/2-2, p.y*G+G/2-3, G/5, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Food (data packet)
+  if (food) {
+    var pulse = 0.6 + Math.sin(frameTick * 0.08) * 0.3;
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#fd0';
+    ctx.shadowColor = '#fd0';
+    ctx.shadowBlur = 8;
+    // Hexagon
+    ctx.beginPath();
+    var fx = food.x*G+G/2, fy = food.y*G+G/2, fr = G/2-2;
+    for (var j = 0; j < 6; j++) {
+      var a = Math.PI/6 + j * Math.PI/3;
+      var px = fx + fr * Math.cos(a);
+      var py = fy + fr * Math.sin(a);
+      if (j === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+
+  // Snake
+  if (snake) {
+    for (var i = snake.length - 1; i >= 0; i--) {
+      var seg = snake[i];
+      var t = i / Math.max(snake.length, 1);
+      if (i === 0) {
+        // Head - bright white with glow
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#4cf';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(seg.x*G+1, seg.y*G+1, G-2, G-2);
+        ctx.shadowBlur = 0;
+        // Antenna dot
+        ctx.fillStyle = '#f44';
+        ctx.fillRect(seg.x*G+G/2-1, seg.y*G+2, 3, 3);
+      } else {
+        // Trail - fading blue
+        var alpha = 0.8 - t * 0.6;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#4488cc';
+        ctx.fillRect(seg.x*G+2, seg.y*G+2, G-4, G-4);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // Particles
+  for (var i = particles.length - 1; i >= 0; i--) {
+    var p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.life -= 0.025;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+
+  // Overlays
+  if (state === 'menu') {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#4cf';
+    ctx.font = 'bold 24px Courier New, monospace';
+    ctx.shadowColor = '#4cf';
+    ctx.shadowBlur = 15;
+    ctx.fillText('SPACE PROBE', W/2, H/2-50);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#aac';
+    ctx.font = '13px monospace';
+    ctx.fillText('Collect data packets. Avoid gravity wells.', W/2, H/2-15);
+    ctx.fillText('Arrow Keys / WASD to navigate', W/2, H/2+10);
+    ctx.fillText('Speed increases near planets!', W/2, H/2+32);
+    ctx.fillStyle = '#4cf';
+    ctx.font = '16px monospace';
+    ctx.fillText('[ CLICK or ENTER to launch ]', W/2, H/2+65);
+  }
+
+  if (state === 'paused') {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ff0';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText('ORBIT HOLD', W/2, H/2-10);
+    ctx.fillStyle = '#aac';
+    ctx.font = '13px monospace';
+    ctx.fillText('Press SPACE to resume', W/2, H/2+20);
+  }
+
+  if (state === 'dead') {
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f44';
+    ctx.font = 'bold 22px monospace';
+    ctx.shadowColor = '#f44';
+    ctx.shadowBlur = 10;
+    ctx.fillText('SIGNAL LOST', W/2, H/2-35);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = '16px monospace';
+    ctx.fillText('Packets collected: ' + score, W/2, H/2);
+    ctx.fillStyle = '#4cf';
+    ctx.font = '14px monospace';
+    ctx.fillText('[ CLICK or ENTER to relaunch ]', W/2, H/2+35);
+  }
+
+  requestAnimationFrame(render);
+}
+
+// ========== AI TOGGLE ==========
+function toggleAI() {
+  aiEnabled = !aiEnabled;
+  var btn = document.getElementById('aiBtn');
+  btn.textContent = aiEnabled ? 'AI: ON' : 'AI: OFF';
+  if (aiEnabled) btn.classList.add('on');
+  else btn.classList.remove('on');
+}
+
+// ========== START ==========
+state = 'menu';
+snake = [];
+food = null;
+planets = [];
+particles = [];
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
