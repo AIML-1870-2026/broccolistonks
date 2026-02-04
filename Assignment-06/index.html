@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Ocean Bioluminescence - Boids Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #0a0a1a 0%, #001133 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #88ccff;
+        }
+
+        #canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Control Panel */
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(10, 20, 40, 0.85);
+            border: 1px solid rgba(68, 136, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1),
+                        inset 0 0 20px rgba(0, 100, 150, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        #controls h2 {
+            color: #00ffff;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #88ccff;
+            margin-bottom: 4px;
+        }
+
+        .control-group label span.value {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(0, 100, 150, 0.3);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #00ffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #00ffff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 0;
+            top: 100%;
+            background: rgba(0, 20, 40, 0.95);
+            color: #88ccff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 200;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            max-width: 200px;
+            white-space: normal;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Buttons */
+        .button-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px 12px;
+            background: rgba(0, 100, 150, 0.3);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 6px;
+            color: #00ffff;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        button.active {
+            background: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        button.danger {
+            border-color: rgba(255, 100, 100, 0.5);
+            color: #ff8866;
+        }
+
+        button.danger:hover {
+            background: rgba(255, 100, 100, 0.2);
+            box-shadow: 0 0 15px rgba(255, 100, 100, 0.3);
+        }
+
+        button.danger.active {
+            background: rgba(255, 100, 100, 0.3);
+        }
+
+        /* Presets Section */
+        .section-title {
+            font-size: 13px;
+            color: #66aaff;
+            margin: 15px 0 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Stats Panel */
+        #stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(10, 20, 40, 0.85);
+            border: 1px solid rgba(68, 136, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        #stats h3 {
+            color: #00ffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .stat-row .stat-label {
+            color: #6699cc;
+        }
+
+        .stat-row .stat-value {
+            color: #00ffff;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        /* Predator Section */
+        .predator-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 100, 100, 0.3);
+        }
+
+        .predator-section .section-title {
+            color: #ff8866;
+        }
+
+        /* Instructions */
+        #instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(10, 20, 40, 0.7);
+            border: 1px solid rgba(68, 136, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 12px;
+            color: #6699cc;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <!-- Control Panel -->
+    <div id="controls">
+        <h2>Boid Parameters</h2>
+
+        <div class="control-group">
+            <label class="tooltip" data-tooltip="How strongly creatures avoid crowding each other">
+                Separation <span class="value" id="separationValue">1.5</span>
+            </label>
+            <input type="range" id="separation" min="0" max="5" step="0.1" value="1.5">
+        </div>
+
+        <div class="control-group">
+            <label class="tooltip" data-tooltip="How strongly creatures align their direction with neighbors">
+                Alignment <span class="value" id="alignmentValue">1.0</span>
+            </label>
+            <input type="range" id="alignment" min="0" max="5" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label class="tooltip" data-tooltip="How strongly creatures move toward the group center">
+                Cohesion <span class="value" id="cohesionValue">1.0</span>
+            </label>
+            <input type="range" id="cohesion" min="0" max="5" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label class="tooltip" data-tooltip="How far each creature can sense its neighbors">
+                Neighbor Radius <span class="value" id="radiusValue">75</span>
+            </label>
+            <input type="range" id="radius" min="20" max="200" step="5" value="75">
+        </div>
+
+        <div class="control-group">
+            <label class="tooltip" data-tooltip="Maximum swimming speed of creatures">
+                Max Speed <span class="value" id="speedValue">4</span>
+            </label>
+            <input type="range" id="maxSpeed" min="1" max="10" step="0.5" value="4">
+        </div>
+
+        <div class="control-group">
+            <label class="tooltip" data-tooltip="Number of creatures in the simulation">
+                Boid Count <span class="value" id="countValue">100</span>
+            </label>
+            <input type="range" id="boidCount" min="10" max="300" step="10" value="100">
+        </div>
+
+        <div class="section-title">Presets</div>
+        <div class="button-row">
+            <button id="presetDrift" class="tooltip" data-tooltip="Calm jellyfish floating lazily">Gentle Drift</button>
+            <button id="presetFrenzy" class="tooltip" data-tooltip="Plankton swarming toward nutrients">Feeding Frenzy</button>
+            <button id="presetPanic" class="tooltip" data-tooltip="Creatures fleeing in chaos">Scattered Panic</button>
+        </div>
+
+        <div class="section-title">Controls</div>
+        <div class="button-row">
+            <button id="resetBtn">Reset</button>
+            <button id="pauseBtn">Pause</button>
+        </div>
+        <div class="button-row">
+            <button id="boundaryBtn">Boundary: Wrap</button>
+        </div>
+
+        <!-- Predator Section -->
+        <div class="predator-section">
+            <div class="section-title">Predator</div>
+            <div class="button-row">
+                <button id="sharkBtn" class="danger">Shark: OFF</button>
+            </div>
+            <div class="control-group">
+                <label class="tooltip" data-tooltip="How far the shark's presence terrifies creatures">
+                    Danger Radius <span class="value" id="dangerValue">150</span>
+                </label>
+                <input type="range" id="dangerRadius" min="50" max="300" step="10" value="150">
+            </div>
+            <div class="control-group">
+                <label class="tooltip" data-tooltip="How fast the shark swims">
+                    Shark Speed <span class="value" id="sharkSpeedValue">2</span>
+                </label>
+                <input type="range" id="sharkSpeed" min="0.5" max="5" step="0.5" value="2">
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="stats">
+        <h3>Instrumentation</h3>
+        <div class="stat-row">
+            <span class="stat-label">FPS</span>
+            <span class="stat-value" id="fps">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Boid Count</span>
+            <span class="stat-value" id="boidCountStat">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Avg Speed</span>
+            <span class="stat-value" id="avgSpeed">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Avg Neighbors</span>
+            <span class="stat-value" id="avgNeighbors">0</span>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div id="instructions">
+        Click and drag to attract creatures | Scroll to zoom (coming soon)
+    </div>
+
+    <script>
+        // Canvas Setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Parameters
+        let params = {
+            separation: 1.5,
+            alignment: 1.0,
+            cohesion: 1.0,
+            neighborRadius: 75,
+            maxSpeed: 4,
+            maxForce: 0.2,
+            boidCount: 100,
+            boundaryMode: 'wrap', // 'wrap' or 'bounce'
+            sharkEnabled: false,
+            dangerRadius: 150,
+            sharkSpeed: 2
+        };
+
+        // State
+        let boids = [];
+        let paused = false;
+        let mouse = { x: null, y: null, pressed: false };
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 0;
+
+        // Shark
+        let shark = {
+            x: 0,
+            y: 0,
+            vx: 1,
+            vy: 0.5,
+            angle: 0,
+            tailPhase: 0
+        };
+
+        // Ambient particles
+        let particles = [];
+        const PARTICLE_COUNT = 50;
+
+        // Colors for boids
+        const boidColors = [
+            { r: 0, g: 255, b: 255 },    // Cyan
+            { r: 255, g: 0, b: 255 },    // Magenta
+            { r: 0, g: 255, b: 136 },    // Green
+            { r: 255, g: 255, b: 100 },  // Yellow
+            { r: 100, g: 200, b: 255 }   // Light blue
+        ];
+
+        // Boid Class
+        class Boid {
+            constructor(x, y) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+                this.ax = 0;
+                this.ay = 0;
+                this.radius = 4 + Math.random() * 4;
+                this.color = boidColors[Math.floor(Math.random() * boidColors.length)];
+                this.trail = [];
+                this.maxTrailLength = 8;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.neighborCount = 0;
+                this.inDanger = false;
+                this.dangerIntensity = 0;
+            }
+
+            applyForce(fx, fy) {
+                this.ax += fx;
+                this.ay += fy;
+            }
+
+            // Separation: steer away from nearby boids
+            separate(boids) {
+                let steerX = 0, steerY = 0;
+                let count = 0;
+                const desiredSeparation = 25;
+
+                for (let other of boids) {
+                    if (other === this) continue;
+                    const dx = this.x - other.x;
+                    const dy = this.y - other.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < desiredSeparation && dist > 0) {
+                        steerX += dx / dist / dist;
+                        steerY += dy / dist / dist;
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    steerX /= count;
+                    steerY /= count;
+                    const mag = Math.sqrt(steerX * steerX + steerY * steerY);
+                    if (mag > 0) {
+                        steerX = (steerX / mag) * params.maxSpeed - this.vx;
+                        steerY = (steerY / mag) * params.maxSpeed - this.vy;
+                        // Limit force
+                        const forceMag = Math.sqrt(steerX * steerX + steerY * steerY);
+                        if (forceMag > params.maxForce) {
+                            steerX = (steerX / forceMag) * params.maxForce;
+                            steerY = (steerY / forceMag) * params.maxForce;
+                        }
+                    }
+                }
+
+                return { x: steerX * params.separation, y: steerY * params.separation };
+            }
+
+            // Alignment: steer toward average heading
+            align(boids) {
+                let avgVx = 0, avgVy = 0;
+                let count = 0;
+
+                for (let other of boids) {
+                    if (other === this) continue;
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < params.neighborRadius) {
+                        avgVx += other.vx;
+                        avgVy += other.vy;
+                        count++;
+                    }
+                }
+
+                this.neighborCount = count;
+
+                if (count > 0) {
+                    avgVx /= count;
+                    avgVy /= count;
+                    const mag = Math.sqrt(avgVx * avgVx + avgVy * avgVy);
+                    if (mag > 0) {
+                        avgVx = (avgVx / mag) * params.maxSpeed;
+                        avgVy = (avgVy / mag) * params.maxSpeed;
+                    }
+                    let steerX = avgVx - this.vx;
+                    let steerY = avgVy - this.vy;
+                    const forceMag = Math.sqrt(steerX * steerX + steerY * steerY);
+                    if (forceMag > params.maxForce) {
+                        steerX = (steerX / forceMag) * params.maxForce;
+                        steerY = (steerY / forceMag) * params.maxForce;
+                    }
+                    return { x: steerX * params.alignment, y: steerY * params.alignment };
+                }
+
+                return { x: 0, y: 0 };
+            }
+
+            // Cohesion: steer toward center of neighbors
+            cohere(boids) {
+                let centerX = 0, centerY = 0;
+                let count = 0;
+
+                for (let other of boids) {
+                    if (other === this) continue;
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < params.neighborRadius) {
+                        centerX += other.x;
+                        centerY += other.y;
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    centerX /= count;
+                    centerY /= count;
+                    return this.seek(centerX, centerY, params.cohesion);
+                }
+
+                return { x: 0, y: 0 };
+            }
+
+            // Seek a target
+            seek(targetX, targetY, weight = 1) {
+                let dx = targetX - this.x;
+                let dy = targetY - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0) {
+                    dx = (dx / dist) * params.maxSpeed;
+                    dy = (dy / dist) * params.maxSpeed;
+                }
+
+                let steerX = dx - this.vx;
+                let steerY = dy - this.vy;
+                const forceMag = Math.sqrt(steerX * steerX + steerY * steerY);
+                if (forceMag > params.maxForce) {
+                    steerX = (steerX / forceMag) * params.maxForce;
+                    steerY = (steerY / forceMag) * params.maxForce;
+                }
+
+                return { x: steerX * weight, y: steerY * weight };
+            }
+
+            // Flee from a target
+            flee(targetX, targetY, weight = 1) {
+                const seek = this.seek(targetX, targetY, weight);
+                return { x: -seek.x, y: -seek.y };
+            }
+
+            flock(boids) {
+                const sep = this.separate(boids);
+                const ali = this.align(boids);
+                const coh = this.cohere(boids);
+
+                this.applyForce(sep.x, sep.y);
+                this.applyForce(ali.x, ali.y);
+                this.applyForce(coh.x, coh.y);
+
+                // Mouse attraction
+                if (mouse.pressed && mouse.x !== null) {
+                    const attract = this.seek(mouse.x, mouse.y, 0.5);
+                    this.applyForce(attract.x, attract.y);
+                }
+
+                // Shark avoidance
+                if (params.sharkEnabled) {
+                    const dx = this.x - shark.x;
+                    const dy = this.y - shark.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < params.dangerRadius) {
+                        this.inDanger = true;
+                        this.dangerIntensity = 1 - (dist / params.dangerRadius);
+                        const flee = this.flee(shark.x, shark.y, 3 * this.dangerIntensity);
+                        this.applyForce(flee.x, flee.y);
+                    } else {
+                        this.inDanger = false;
+                        this.dangerIntensity = Math.max(0, this.dangerIntensity - 0.05);
+                    }
+                } else {
+                    this.inDanger = false;
+                    this.dangerIntensity = 0;
+                }
+            }
+
+            update() {
+                // Store trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > this.maxTrailLength) {
+                    this.trail.shift();
+                }
+
+                // Update velocity
+                this.vx += this.ax;
+                this.vy += this.ay;
+
+                // Limit speed
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                const currentMaxSpeed = this.inDanger ? params.maxSpeed * 1.5 : params.maxSpeed;
+                if (speed > currentMaxSpeed) {
+                    this.vx = (this.vx / speed) * currentMaxSpeed;
+                    this.vy = (this.vy / speed) * currentMaxSpeed;
+                }
+
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Reset acceleration
+                this.ax = 0;
+                this.ay = 0;
+
+                // Boundary behavior
+                if (params.boundaryMode === 'wrap') {
+                    if (this.x < 0) this.x = canvas.width;
+                    if (this.x > canvas.width) this.x = 0;
+                    if (this.y < 0) this.y = canvas.height;
+                    if (this.y > canvas.height) this.y = 0;
+                } else {
+                    // Bounce
+                    if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
+                    if (this.x > canvas.width - this.radius) { this.x = canvas.width - this.radius; this.vx *= -1; }
+                    if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
+                    if (this.y > canvas.height - this.radius) { this.y = canvas.height - this.radius; this.vy *= -1; }
+                }
+
+                // Update pulse
+                this.pulsePhase += 0.05;
+            }
+
+            draw() {
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                const speedRatio = speed / params.maxSpeed;
+                const pulse = 0.7 + 0.3 * Math.sin(this.pulsePhase);
+
+                // Danger color blend
+                let r = this.color.r;
+                let g = this.color.g;
+                let b = this.color.b;
+
+                if (this.dangerIntensity > 0) {
+                    r = Math.floor(r + (255 - r) * this.dangerIntensity);
+                    g = Math.floor(g * (1 - this.dangerIntensity * 0.7));
+                    b = Math.floor(b * (1 - this.dangerIntensity * 0.5));
+                }
+
+                // Draw trail
+                for (let i = 0; i < this.trail.length; i++) {
+                    const t = this.trail[i];
+                    const alpha = (i / this.trail.length) * 0.3 * pulse;
+                    const trailRadius = this.radius * (i / this.trail.length) * 0.8;
+
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, trailRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                    ctx.fill();
+                }
+
+                // Draw glow
+                const glowRadius = this.radius * 2 * (0.8 + speedRatio * 0.4) * pulse;
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y, 0,
+                    this.x, this.y, glowRadius
+                );
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.8 * pulse})`);
+                gradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${0.3 * pulse})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Draw body
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * pulse})`;
+                ctx.fill();
+
+                // Draw bright center
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 0.4 * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * pulse})`;
+                ctx.fill();
+            }
+
+            getSpeed() {
+                return Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            }
+        }
+
+        // Ambient Particle Class
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.speedY = Math.random() * 0.2 + 0.1;
+                this.opacity = Math.random() * 0.3 + 0.1;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.y > canvas.height) {
+                    this.y = 0;
+                    this.x = Math.random() * canvas.width;
+                }
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 150, 200, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        // Initialize
+        function init() {
+            boids = [];
+            for (let i = 0; i < params.boidCount; i++) {
+                boids.push(new Boid());
+            }
+
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new Particle());
+            }
+
+            shark.x = canvas.width / 2;
+            shark.y = canvas.height / 2;
+        }
+
+        // Update shark
+        function updateShark() {
+            if (!params.sharkEnabled) return;
+
+            shark.tailPhase += 0.1;
+
+            // Move toward mouse if pressed, otherwise patrol
+            if (mouse.pressed && mouse.x !== null) {
+                const dx = mouse.x - shark.x;
+                const dy = mouse.y - shark.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 5) {
+                    shark.vx += (dx / dist) * 0.1;
+                    shark.vy += (dy / dist) * 0.1;
+                }
+            } else {
+                // Patrol behavior - slight random wandering
+                shark.vx += (Math.random() - 0.5) * 0.05;
+                shark.vy += (Math.random() - 0.5) * 0.05;
+            }
+
+            // Limit speed
+            const speed = Math.sqrt(shark.vx * shark.vx + shark.vy * shark.vy);
+            if (speed > params.sharkSpeed) {
+                shark.vx = (shark.vx / speed) * params.sharkSpeed;
+                shark.vy = (shark.vy / speed) * params.sharkSpeed;
+            }
+
+            shark.x += shark.vx;
+            shark.y += shark.vy;
+
+            // Wrap around
+            if (shark.x < -50) shark.x = canvas.width + 50;
+            if (shark.x > canvas.width + 50) shark.x = -50;
+            if (shark.y < -50) shark.y = canvas.height + 50;
+            if (shark.y > canvas.height + 50) shark.y = -50;
+
+            // Update angle
+            shark.angle = Math.atan2(shark.vy, shark.vx);
+        }
+
+        // Draw shark
+        function drawShark() {
+            if (!params.sharkEnabled) return;
+
+            ctx.save();
+            ctx.translate(shark.x, shark.y);
+            ctx.rotate(shark.angle);
+
+            // Danger zone visualization
+            ctx.beginPath();
+            ctx.arc(0, 0, params.dangerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.05)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 50, 50, 0.2)';
+            ctx.stroke();
+
+            // Shark body
+            ctx.fillStyle = '#1a1a2e';
+
+            // Main body
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 40, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail with animation
+            const tailWag = Math.sin(shark.tailPhase) * 10;
+            ctx.beginPath();
+            ctx.moveTo(-30, 0);
+            ctx.quadraticCurveTo(-45, tailWag, -55, tailWag * 1.5);
+            ctx.quadraticCurveTo(-45, tailWag, -55, -tailWag * 0.5);
+            ctx.quadraticCurveTo(-45, -tailWag * 0.3, -30, 0);
+            ctx.fill();
+
+            // Dorsal fin
+            ctx.beginPath();
+            ctx.moveTo(-5, -15);
+            ctx.lineTo(5, -30);
+            ctx.lineTo(15, -15);
+            ctx.fill();
+
+            // Snout
+            ctx.beginPath();
+            ctx.moveTo(40, 0);
+            ctx.lineTo(55, -3);
+            ctx.lineTo(55, 3);
+            ctx.closePath();
+            ctx.fill();
+
+            // Eye glow
+            const nearBoid = boids.some(b => {
+                const dx = b.x - shark.x;
+                const dy = b.y - shark.y;
+                return Math.sqrt(dx * dx + dy * dy) < params.dangerRadius * 0.5;
+            });
+
+            const eyeGlow = nearBoid ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 150, 100, 0.5)';
+            ctx.beginPath();
+            ctx.arc(25, -5, 4, 0, Math.PI * 2);
+            ctx.fillStyle = eyeGlow;
+            ctx.fill();
+
+            if (nearBoid) {
+                ctx.beginPath();
+                ctx.arc(25, -5, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 100, 100, 0.3)';
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        // Draw background
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a0a1a');
+            gradient.addColorStop(1, '#001133');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Update stats
+        function updateStats() {
+            // FPS calculation
+            frameCount++;
+            const now = performance.now();
+            if (now - lastTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('boidCountStat').textContent = boids.length;
+
+            // Average speed
+            const avgSpeed = boids.reduce((sum, b) => sum + b.getSpeed(), 0) / boids.length;
+            document.getElementById('avgSpeed').textContent = avgSpeed.toFixed(2);
+
+            // Average neighbors
+            const avgNeighbors = boids.reduce((sum, b) => sum + b.neighborCount, 0) / boids.length;
+            document.getElementById('avgNeighbors').textContent = avgNeighbors.toFixed(1);
+        }
+
+        // Animation loop
+        function animate() {
+            if (!paused) {
+                drawBackground();
+
+                // Update and draw particles
+                for (let p of particles) {
+                    p.update();
+                    p.draw();
+                }
+
+                // Update shark
+                updateShark();
+
+                // Flock behavior
+                for (let boid of boids) {
+                    boid.flock(boids);
+                }
+
+                // Update and draw boids
+                ctx.globalCompositeOperation = 'lighter';
+                for (let boid of boids) {
+                    boid.update();
+                    boid.draw();
+                }
+                ctx.globalCompositeOperation = 'source-over';
+
+                // Draw shark on top
+                drawShark();
+
+                updateStats();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Sync boid count with slider
+        function syncBoidCount() {
+            const target = params.boidCount;
+            const current = boids.length;
+
+            if (target > current) {
+                for (let i = 0; i < target - current; i++) {
+                    boids.push(new Boid());
+                }
+            } else if (target < current) {
+                boids.splice(target);
+            }
+        }
+
+        // Event Listeners
+        // Sliders
+        document.getElementById('separation').addEventListener('input', (e) => {
+            params.separation = parseFloat(e.target.value);
+            document.getElementById('separationValue').textContent = params.separation.toFixed(1);
+        });
+
+        document.getElementById('alignment').addEventListener('input', (e) => {
+            params.alignment = parseFloat(e.target.value);
+            document.getElementById('alignmentValue').textContent = params.alignment.toFixed(1);
+        });
+
+        document.getElementById('cohesion').addEventListener('input', (e) => {
+            params.cohesion = parseFloat(e.target.value);
+            document.getElementById('cohesionValue').textContent = params.cohesion.toFixed(1);
+        });
+
+        document.getElementById('radius').addEventListener('input', (e) => {
+            params.neighborRadius = parseFloat(e.target.value);
+            document.getElementById('radiusValue').textContent = params.neighborRadius;
+        });
+
+        document.getElementById('maxSpeed').addEventListener('input', (e) => {
+            params.maxSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = params.maxSpeed.toFixed(1);
+        });
+
+        document.getElementById('boidCount').addEventListener('input', (e) => {
+            params.boidCount = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = params.boidCount;
+            syncBoidCount();
+        });
+
+        document.getElementById('dangerRadius').addEventListener('input', (e) => {
+            params.dangerRadius = parseFloat(e.target.value);
+            document.getElementById('dangerValue').textContent = params.dangerRadius;
+        });
+
+        document.getElementById('sharkSpeed').addEventListener('input', (e) => {
+            params.sharkSpeed = parseFloat(e.target.value);
+            document.getElementById('sharkSpeedValue').textContent = params.sharkSpeed.toFixed(1);
+        });
+
+        // Preset buttons
+        document.getElementById('presetDrift').addEventListener('click', () => {
+            params.separation = 1.0;
+            params.alignment = 0.8;
+            params.cohesion = 1.2;
+            params.neighborRadius = 120;
+            params.maxSpeed = 2;
+            updateSliders();
+        });
+
+        document.getElementById('presetFrenzy').addEventListener('click', () => {
+            params.separation = 1.2;
+            params.alignment = 1.5;
+            params.cohesion = 2.5;
+            params.neighborRadius = 50;
+            params.maxSpeed = 6;
+            updateSliders();
+        });
+
+        document.getElementById('presetPanic').addEventListener('click', () => {
+            params.separation = 3.0;
+            params.alignment = 0.3;
+            params.cohesion = 0.2;
+            params.neighborRadius = 100;
+            params.maxSpeed = 8;
+            updateSliders();
+        });
+
+        function updateSliders() {
+            document.getElementById('separation').value = params.separation;
+            document.getElementById('separationValue').textContent = params.separation.toFixed(1);
+
+            document.getElementById('alignment').value = params.alignment;
+            document.getElementById('alignmentValue').textContent = params.alignment.toFixed(1);
+
+            document.getElementById('cohesion').value = params.cohesion;
+            document.getElementById('cohesionValue').textContent = params.cohesion.toFixed(1);
+
+            document.getElementById('radius').value = params.neighborRadius;
+            document.getElementById('radiusValue').textContent = params.neighborRadius;
+
+            document.getElementById('maxSpeed').value = params.maxSpeed;
+            document.getElementById('speedValue').textContent = params.maxSpeed.toFixed(1);
+        }
+
+        // Control buttons
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            init();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', (e) => {
+            paused = !paused;
+            e.target.textContent = paused ? 'Resume' : 'Pause';
+            e.target.classList.toggle('active', paused);
+        });
+
+        document.getElementById('boundaryBtn').addEventListener('click', (e) => {
+            params.boundaryMode = params.boundaryMode === 'wrap' ? 'bounce' : 'wrap';
+            e.target.textContent = `Boundary: ${params.boundaryMode.charAt(0).toUpperCase() + params.boundaryMode.slice(1)}`;
+        });
+
+        document.getElementById('sharkBtn').addEventListener('click', (e) => {
+            params.sharkEnabled = !params.sharkEnabled;
+            e.target.textContent = `Shark: ${params.sharkEnabled ? 'ON' : 'OFF'}`;
+            e.target.classList.toggle('active', params.sharkEnabled);
+        });
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            mouse.pressed = true;
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouse.pressed = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouse.pressed = false;
+        });
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            mouse.pressed = true;
+            mouse.x = e.touches[0].clientX;
+            mouse.y = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            mouse.x = e.touches[0].clientX;
+            mouse.y = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchend', () => {
+            mouse.pressed = false;
+        });
+
+        // Start
+        init();
+        animate();
+    </script>
+</body>
+</html>
