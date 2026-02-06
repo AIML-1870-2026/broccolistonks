@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terrain Genesis - Turing Patterns</title>
+    <title>Terrain Genesis - Turing Patterns (GPU Accelerated)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
@@ -50,6 +50,17 @@
             margin-top: 5px;
         }
 
+        .gpu-badge {
+            display: inline-block;
+            background: #ff6b35;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
         .canvas-container {
             flex: 1;
             min-width: 300px;
@@ -69,16 +80,12 @@
             overflow: hidden;
         }
 
-        #simulation-canvas, #render-canvas, #three-container {
+        #render-canvas, #three-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-        }
-
-        #simulation-canvas {
-            display: none;
         }
 
         #three-container {
@@ -265,7 +272,7 @@
             margin-top: 4px;
         }
 
-        .color-scheme-select {
+        .color-scheme-select, .resolution-select {
             width: 100%;
             padding: 8px;
             border: 2px solid #5c4033;
@@ -275,6 +282,7 @@
             background: #f4f1e8;
             color: #5c4033;
             cursor: pointer;
+            margin-bottom: 8px;
         }
 
         .toggle-row {
@@ -354,7 +362,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Terrain Genesis</h1>
+            <h1>Terrain Genesis <span class="gpu-badge">GPU Accelerated</span></h1>
             <p>Turing Pattern Reaction-Diffusion Simulation</p>
         </header>
 
@@ -364,7 +372,6 @@
                 <button class="view-tab" data-view="3d">3D Terrain</button>
             </div>
             <div class="canvas-wrapper">
-                <canvas id="simulation-canvas"></canvas>
                 <canvas id="render-canvas"></canvas>
                 <div id="three-container"></div>
             </div>
@@ -408,6 +415,14 @@
             <div class="panel">
                 <h3>Simulation Controls</h3>
                 <div class="control-group">
+                    <label>Resolution</label>
+                    <select class="resolution-select" id="resolution">
+                        <option value="256">256 x 256</option>
+                        <option value="512" selected>512 x 512</option>
+                        <option value="1024">1024 x 1024</option>
+                    </select>
+                </div>
+                <div class="control-group">
                     <label>Feed Rate (F) <span id="f-value">0.055</span></label>
                     <input type="range" id="feed-rate" min="0.01" max="0.1" step="0.001" value="0.055">
                 </div>
@@ -424,8 +439,8 @@
                     <input type="range" id="diffusion-b" min="0.1" max="0.8" step="0.05" value="0.5">
                 </div>
                 <div class="control-group">
-                    <label>Simulation Speed <span id="speed-value">10</span></label>
-                    <input type="range" id="sim-speed" min="1" max="20" step="1" value="10">
+                    <label>Simulation Speed <span id="speed-value">20</span></label>
+                    <input type="range" id="sim-speed" min="1" max="50" step="1" value="20">
                 </div>
             </div>
 
@@ -472,11 +487,11 @@
                 <div class="control-group">
                     <label>Color Scheme</label>
                     <select class="color-scheme-select" id="color-scheme">
-                        <option value="classic">Classic Topo</option>
-                        <option value="bathymetric">Bathymetric</option>
-                        <option value="mars">Mars</option>
-                        <option value="greyscale">Greyscale Relief</option>
-                        <option value="heatmap">Heatmap</option>
+                        <option value="0">Classic Topo</option>
+                        <option value="1">Bathymetric</option>
+                        <option value="2">Mars</option>
+                        <option value="3">Greyscale Relief</option>
+                        <option value="4">Heatmap</option>
                     </select>
                 </div>
                 <div class="toggle-row">
@@ -524,28 +539,22 @@
     </div>
 
     <script>
-        // Configuration
-        const CONFIG = {
-            gridSize: 256,
-            defaultF: 0.055,
-            defaultK: 0.062,
-            defaultDa: 1.0,
-            defaultDb: 0.5,
-            defaultSpeed: 10
-        };
+        // ============================================
+        // GPU-ACCELERATED GRAY-SCOTT SIMULATION
+        // ============================================
 
         // State
         const state = {
             running: true,
             iterations: 0,
-            f: CONFIG.defaultF,
-            k: CONFIG.defaultK,
-            dA: CONFIG.defaultDa,
-            dB: CONFIG.defaultDb,
-            speed: CONFIG.defaultSpeed,
+            f: 0.055,
+            k: 0.062,
+            dA: 1.0,
+            dB: 0.5,
+            speed: 20,
             brushSize: 20,
             brushMode: 'add',
-            colorScheme: 'classic',
+            colorScheme: 0,
             showContours: true,
             contourInterval: 0.1,
             showHillshade: true,
@@ -555,255 +564,486 @@
             exaggeration: 3.0,
             waterLevel: 0.3,
             showWater: true,
-            showWireframe: false
+            showWireframe: false,
+            resolution: 512
         };
 
-        // Simulation buffers
-        let gridA, gridB, nextA, nextB;
-        const size = CONFIG.gridSize;
-
-        // Canvas setup
-        const simCanvas = document.getElementById('simulation-canvas');
-        const renderCanvas = document.getElementById('render-canvas');
-        const simCtx = simCanvas.getContext('2d');
-        const renderCtx = renderCanvas.getContext('2d');
-
-        simCanvas.width = size;
-        simCanvas.height = size;
+        // WebGL variables
+        let gl, simProgram, renderProgram;
+        let textures = [], framebuffers = [];
+        let currentTex = 0;
+        let quadVAO;
+        let brushProgram;
 
         // Three.js variables
         let scene, camera, renderer, terrain, waterMesh;
-        let orbitRadius = 2;
-        let orbitTheta = 0.5;
-        let orbitPhi = 0.8;
-        let isDragging3D = false;
-        let lastMouseX, lastMouseY;
+        let orbitRadius = 2, orbitTheta = 0.5, orbitPhi = 0.8;
+        let isDragging3D = false, lastMouseX, lastMouseY;
 
-        // Color schemes
-        const colorSchemes = {
-            classic: [
-                { pos: 0.0, color: [26, 82, 118] },
-                { pos: 0.2, color: [46, 125, 50] },
-                { pos: 0.4, color: [124, 179, 66] },
-                { pos: 0.5, color: [201, 180, 88] },
-                { pos: 0.7, color: [139, 90, 43] },
-                { pos: 0.85, color: [128, 128, 128] },
-                { pos: 1.0, color: [255, 255, 255] }
-            ],
-            bathymetric: [
-                { pos: 0.0, color: [0, 0, 80] },
-                { pos: 0.2, color: [0, 50, 150] },
-                { pos: 0.35, color: [0, 150, 200] },
-                { pos: 0.45, color: [150, 220, 200] },
-                { pos: 0.5, color: [46, 125, 50] },
-                { pos: 0.7, color: [139, 90, 43] },
-                { pos: 0.9, color: [200, 200, 200] },
-                { pos: 1.0, color: [255, 255, 255] }
-            ],
-            mars: [
-                { pos: 0.0, color: [60, 20, 10] },
-                { pos: 0.3, color: [150, 60, 30] },
-                { pos: 0.5, color: [200, 100, 50] },
-                { pos: 0.7, color: [220, 150, 100] },
-                { pos: 0.9, color: [240, 200, 180] },
-                { pos: 1.0, color: [255, 240, 230] }
-            ],
-            greyscale: [
-                { pos: 0.0, color: [20, 20, 20] },
-                { pos: 0.5, color: [128, 128, 128] },
-                { pos: 1.0, color: [250, 250, 250] }
-            ],
-            heatmap: [
-                { pos: 0.0, color: [0, 0, 100] },
-                { pos: 0.25, color: [0, 100, 200] },
-                { pos: 0.5, color: [255, 255, 255] },
-                { pos: 0.75, color: [255, 150, 0] },
-                { pos: 1.0, color: [200, 0, 0] }
-            ]
-        };
+        const canvas = document.getElementById('render-canvas');
 
-        // Initialize grids
-        function initGrids() {
-            gridA = new Float32Array(size * size);
-            gridB = new Float32Array(size * size);
-            nextA = new Float32Array(size * size);
-            nextB = new Float32Array(size * size);
+        // Vertex shader (shared)
+        const vertexShaderSource = `#version 300 es
+            in vec2 a_position;
+            out vec2 v_uv;
+            void main() {
+                v_uv = a_position * 0.5 + 0.5;
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
 
-            for (let i = 0; i < size * size; i++) {
-                gridA[i] = 1.0;
-                gridB[i] = 0.0;
+        // Gray-Scott simulation fragment shader
+        const simulationShaderSource = `#version 300 es
+            precision highp float;
+
+            uniform sampler2D u_state;
+            uniform vec2 u_resolution;
+            uniform float u_f;
+            uniform float u_k;
+            uniform float u_dA;
+            uniform float u_dB;
+
+            in vec2 v_uv;
+            out vec4 fragColor;
+
+            void main() {
+                vec2 texel = 1.0 / u_resolution;
+
+                vec2 state = texture(u_state, v_uv).rg;
+                float a = state.r;
+                float b = state.g;
+
+                // 9-point Laplacian for smoother diffusion
+                float lapA = 0.0;
+                float lapB = 0.0;
+
+                // Center weight
+                lapA -= a;
+                lapB -= b;
+
+                // Cardinal neighbors (weight 0.2 each)
+                vec2 n = texture(u_state, v_uv + vec2(0.0, texel.y)).rg;
+                vec2 s = texture(u_state, v_uv + vec2(0.0, -texel.y)).rg;
+                vec2 e = texture(u_state, v_uv + vec2(texel.x, 0.0)).rg;
+                vec2 w = texture(u_state, v_uv + vec2(-texel.x, 0.0)).rg;
+
+                lapA += 0.2 * (n.r + s.r + e.r + w.r);
+                lapB += 0.2 * (n.g + s.g + e.g + w.g);
+
+                // Diagonal neighbors (weight 0.05 each)
+                vec2 ne = texture(u_state, v_uv + vec2(texel.x, texel.y)).rg;
+                vec2 nw = texture(u_state, v_uv + vec2(-texel.x, texel.y)).rg;
+                vec2 se = texture(u_state, v_uv + vec2(texel.x, -texel.y)).rg;
+                vec2 sw = texture(u_state, v_uv + vec2(-texel.x, -texel.y)).rg;
+
+                lapA += 0.05 * (ne.r + nw.r + se.r + sw.r);
+                lapB += 0.05 * (ne.g + nw.g + se.g + sw.g);
+
+                float abb = a * b * b;
+
+                float newA = a + u_dA * lapA - abb + u_f * (1.0 - a);
+                float newB = b + u_dB * lapB + abb - (u_k + u_f) * b;
+
+                fragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
+            }
+        `;
+
+        // Brush shader for adding/removing chemicals
+        const brushShaderSource = `#version 300 es
+            precision highp float;
+
+            uniform sampler2D u_state;
+            uniform vec2 u_resolution;
+            uniform vec2 u_brushPos;
+            uniform float u_brushSize;
+            uniform float u_brushMode; // 1.0 = add, -1.0 = remove
+
+            in vec2 v_uv;
+            out vec4 fragColor;
+
+            void main() {
+                vec2 state = texture(u_state, v_uv).rg;
+
+                vec2 pixelPos = v_uv * u_resolution;
+                float dist = distance(pixelPos, u_brushPos);
+
+                if (dist < u_brushSize) {
+                    float strength = 1.0 - (dist / u_brushSize);
+                    strength = strength * strength * 0.5;
+
+                    if (u_brushMode > 0.0) {
+                        state.g = min(1.0, state.g + strength);
+                    } else {
+                        state.g = max(0.0, state.g - strength);
+                        state.r = min(1.0, state.r + strength * 0.5);
+                    }
+                }
+
+                fragColor = vec4(state, 0.0, 1.0);
+            }
+        `;
+
+        // Render shader with topographic coloring
+        const renderShaderSource = `#version 300 es
+            precision highp float;
+
+            uniform sampler2D u_state;
+            uniform vec2 u_resolution;
+            uniform int u_colorScheme;
+            uniform bool u_showContours;
+            uniform float u_contourInterval;
+            uniform bool u_showHillshade;
+            uniform float u_lightAngle;
+            uniform bool u_showGrid;
+
+            in vec2 v_uv;
+            out vec4 fragColor;
+
+            // Color scheme functions
+            vec3 classicTopo(float v) {
+                if (v < 0.2) return mix(vec3(0.102, 0.322, 0.463), vec3(0.180, 0.490, 0.196), v / 0.2);
+                if (v < 0.4) return mix(vec3(0.180, 0.490, 0.196), vec3(0.486, 0.702, 0.259), (v - 0.2) / 0.2);
+                if (v < 0.5) return mix(vec3(0.486, 0.702, 0.259), vec3(0.788, 0.706, 0.345), (v - 0.4) / 0.1);
+                if (v < 0.7) return mix(vec3(0.788, 0.706, 0.345), vec3(0.545, 0.353, 0.169), (v - 0.5) / 0.2);
+                if (v < 0.85) return mix(vec3(0.545, 0.353, 0.169), vec3(0.5, 0.5, 0.5), (v - 0.7) / 0.15);
+                return mix(vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), (v - 0.85) / 0.15);
             }
 
-            state.iterations = 0;
+            vec3 bathymetric(float v) {
+                if (v < 0.2) return mix(vec3(0.0, 0.0, 0.314), vec3(0.0, 0.196, 0.588), v / 0.2);
+                if (v < 0.35) return mix(vec3(0.0, 0.196, 0.588), vec3(0.0, 0.588, 0.784), (v - 0.2) / 0.15);
+                if (v < 0.45) return mix(vec3(0.0, 0.588, 0.784), vec3(0.588, 0.863, 0.784), (v - 0.35) / 0.1);
+                if (v < 0.5) return mix(vec3(0.588, 0.863, 0.784), vec3(0.180, 0.490, 0.196), (v - 0.45) / 0.05);
+                if (v < 0.7) return mix(vec3(0.180, 0.490, 0.196), vec3(0.545, 0.353, 0.169), (v - 0.5) / 0.2);
+                if (v < 0.9) return mix(vec3(0.545, 0.353, 0.169), vec3(0.784, 0.784, 0.784), (v - 0.7) / 0.2);
+                return mix(vec3(0.784, 0.784, 0.784), vec3(1.0, 1.0, 1.0), (v - 0.9) / 0.1);
+            }
+
+            vec3 mars(float v) {
+                if (v < 0.3) return mix(vec3(0.235, 0.078, 0.039), vec3(0.588, 0.235, 0.118), v / 0.3);
+                if (v < 0.5) return mix(vec3(0.588, 0.235, 0.118), vec3(0.784, 0.392, 0.196), (v - 0.3) / 0.2);
+                if (v < 0.7) return mix(vec3(0.784, 0.392, 0.196), vec3(0.863, 0.588, 0.392), (v - 0.5) / 0.2);
+                if (v < 0.9) return mix(vec3(0.863, 0.588, 0.392), vec3(0.941, 0.784, 0.706), (v - 0.7) / 0.2);
+                return mix(vec3(0.941, 0.784, 0.706), vec3(1.0, 0.941, 0.902), (v - 0.9) / 0.1);
+            }
+
+            vec3 greyscale(float v) {
+                return vec3(v * 0.9 + 0.08);
+            }
+
+            vec3 heatmap(float v) {
+                if (v < 0.25) return mix(vec3(0.0, 0.0, 0.392), vec3(0.0, 0.392, 0.784), v / 0.25);
+                if (v < 0.5) return mix(vec3(0.0, 0.392, 0.784), vec3(1.0, 1.0, 1.0), (v - 0.25) / 0.25);
+                if (v < 0.75) return mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 0.588, 0.0), (v - 0.5) / 0.25);
+                return mix(vec3(1.0, 0.588, 0.0), vec3(0.784, 0.0, 0.0), (v - 0.75) / 0.25);
+            }
+
+            vec3 getColor(float v, int scheme) {
+                if (scheme == 0) return classicTopo(v);
+                if (scheme == 1) return bathymetric(v);
+                if (scheme == 2) return mars(v);
+                if (scheme == 3) return greyscale(v);
+                return heatmap(v);
+            }
+
+            void main() {
+                vec2 texel = 1.0 / u_resolution;
+                float value = texture(u_state, v_uv).g;
+
+                vec3 color = getColor(value, u_colorScheme);
+
+                // Hillshade
+                if (u_showHillshade) {
+                    float n = texture(u_state, v_uv + vec2(0.0, texel.y)).g;
+                    float s = texture(u_state, v_uv + vec2(0.0, -texel.y)).g;
+                    float e = texture(u_state, v_uv + vec2(texel.x, 0.0)).g;
+                    float w = texture(u_state, v_uv + vec2(-texel.x, 0.0)).g;
+
+                    float dzdx = (e - w) * 5.0;
+                    float dzdy = (n - s) * 5.0;
+
+                    float azimuth = radians(u_lightAngle);
+                    float altitude = radians(45.0);
+
+                    float slope = atan(sqrt(dzdx * dzdx + dzdy * dzdy));
+                    float aspect = atan(dzdy, -dzdx);
+
+                    float shade = cos(altitude) * sin(slope) * cos(azimuth - aspect) + sin(altitude) * cos(slope);
+                    shade = shade * 0.4 + 0.6;
+                    shade = clamp(shade, 0.3, 1.0);
+
+                    color *= shade;
+                }
+
+                // Contour lines
+                if (u_showContours) {
+                    float contourVal = mod(value, u_contourInterval);
+                    float lineWidth = 0.008;
+                    if (contourVal < lineWidth || contourVal > u_contourInterval - lineWidth) {
+                        color *= 0.4;
+                    }
+                }
+
+                // Grid overlay
+                if (u_showGrid) {
+                    float gridSize = 1.0 / 8.0;
+                    vec2 gridPos = mod(v_uv, gridSize);
+                    float lineWidth = 0.003;
+                    if (gridPos.x < lineWidth || gridPos.y < lineWidth) {
+                        color = mix(color, vec3(0.36, 0.25, 0.2), 0.3);
+                    }
+                }
+
+                fragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // Initialize WebGL
+        function initWebGL() {
+            gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+            if (!gl) {
+                alert('WebGL 2 not supported');
+                return false;
+            }
+
+            // Check for float texture support
+            const ext = gl.getExtension('EXT_color_buffer_float');
+            if (!ext) {
+                console.warn('EXT_color_buffer_float not supported, using HALF_FLOAT');
+            }
+
+            // Create shader programs
+            simProgram = createProgram(vertexShaderSource, simulationShaderSource);
+            renderProgram = createProgram(vertexShaderSource, renderShaderSource);
+            brushProgram = createProgram(vertexShaderSource, brushShaderSource);
+
+            // Create quad geometry
+            const quadVertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+            const quadBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+
+            // Setup VAO
+            quadVAO = gl.createVertexArray();
+            gl.bindVertexArray(quadVAO);
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+            initTextures();
+            return true;
         }
 
-        // Seed patterns
+        function createShader(type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(vertexSource, fragmentSource) {
+            const vertexShader = createShader(gl.VERTEX_SHADER, vertexSource);
+            const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentSource);
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                return null;
+            }
+            return program;
+        }
+
+        function initTextures() {
+            const size = state.resolution;
+
+            // Clean up old textures
+            textures.forEach(t => t && gl.deleteTexture(t));
+            framebuffers.forEach(f => f && gl.deleteFramebuffer(f));
+            textures = [];
+            framebuffers = [];
+
+            // Initialize with A=1, B=0
+            const initialData = new Float32Array(size * size * 4);
+            for (let i = 0; i < size * size; i++) {
+                initialData[i * 4] = 1.0;     // A
+                initialData[i * 4 + 1] = 0.0; // B
+                initialData[i * 4 + 2] = 0.0;
+                initialData[i * 4 + 3] = 1.0;
+            }
+
+            // Create two textures for ping-pong
+            for (let i = 0; i < 2; i++) {
+                const texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, initialData);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+                textures.push(texture);
+
+                const fb = gl.createFramebuffer();
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+                framebuffers.push(fb);
+            }
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            currentTex = 0;
+            state.iterations = 0;
+
+            // Seed initial pattern
+            seedPattern();
+        }
+
         function seedPattern() {
+            const size = state.resolution;
+            const data = new Float32Array(size * size * 4);
+
+            // Read current state
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentTex]);
+            gl.readPixels(0, 0, size, size, gl.RGBA, gl.FLOAT, data);
+
+            // Add seed points
             const cx = size / 2;
             const cy = size / 2;
-            const seedRadius = 20;
+            const seedRadius = Math.floor(size / 12);
 
             for (let i = 0; i < 5; i++) {
-                const sx = cx + (Math.random() - 0.5) * 100;
-                const sy = cy + (Math.random() - 0.5) * 100;
+                const sx = cx + (Math.random() - 0.5) * size * 0.4;
+                const sy = cy + (Math.random() - 0.5) * size * 0.4;
 
                 for (let y = -seedRadius; y <= seedRadius; y++) {
                     for (let x = -seedRadius; x <= seedRadius; x++) {
                         if (x * x + y * y <= seedRadius * seedRadius) {
                             const px = Math.floor(sx + x + size) % size;
                             const py = Math.floor(sy + y + size) % size;
-                            const idx = py * size + px;
-                            gridB[idx] = 1.0;
+                            const idx = (py * size + px) * 4;
+                            data[idx + 1] = 1.0; // Set B
                         }
                     }
                 }
             }
+
+            // Upload modified data
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, size, size, gl.RGBA, gl.FLOAT, data);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
 
-        // Gray-Scott simulation step
+        function resetSimulation() {
+            const size = state.resolution;
+            const data = new Float32Array(size * size * 4);
+            for (let i = 0; i < size * size; i++) {
+                data[i * 4] = 1.0;
+                data[i * 4 + 1] = 0.0;
+                data[i * 4 + 2] = 0.0;
+                data[i * 4 + 3] = 1.0;
+            }
+
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, size, size, gl.RGBA, gl.FLOAT, data);
+            state.iterations = 0;
+        }
+
         function simulate() {
             if (!state.running) return;
 
-            for (let step = 0; step < state.speed; step++) {
-                for (let y = 0; y < size; y++) {
-                    for (let x = 0; x < size; x++) {
-                        const idx = y * size + x;
+            const size = state.resolution;
+            gl.viewport(0, 0, size, size);
+            gl.useProgram(simProgram);
+            gl.bindVertexArray(quadVAO);
 
-                        const a = gridA[idx];
-                        const b = gridB[idx];
+            // Set uniforms
+            gl.uniform2f(gl.getUniformLocation(simProgram, 'u_resolution'), size, size);
+            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_f'), state.f);
+            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_k'), state.k);
+            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_dA'), state.dA);
+            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_dB'), state.dB);
 
-                        // Laplacian with wrapping
-                        const xp = (x + 1) % size;
-                        const xm = (x - 1 + size) % size;
-                        const yp = (y + 1) % size;
-                        const ym = (y - 1 + size) % size;
+            for (let i = 0; i < state.speed; i++) {
+                const readTex = currentTex;
+                const writeTex = 1 - currentTex;
 
-                        const lapA = gridA[y * size + xp] + gridA[y * size + xm] +
-                                     gridA[yp * size + x] + gridA[ym * size + x] - 4 * a;
-                        const lapB = gridB[y * size + xp] + gridB[y * size + xm] +
-                                     gridB[yp * size + x] + gridB[ym * size + x] - 4 * b;
+                gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[writeTex]);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, textures[readTex]);
+                gl.uniform1i(gl.getUniformLocation(simProgram, 'u_state'), 0);
 
-                        const abb = a * b * b;
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-                        nextA[idx] = a + (state.dA * lapA - abb + state.f * (1 - a));
-                        nextB[idx] = b + (state.dB * lapB + abb - (state.k + state.f) * b);
-
-                        nextA[idx] = Math.max(0, Math.min(1, nextA[idx]));
-                        nextB[idx] = Math.max(0, Math.min(1, nextB[idx]));
-                    }
-                }
-
-                [gridA, nextA] = [nextA, gridA];
-                [gridB, nextB] = [nextB, gridB];
+                currentTex = writeTex;
                 state.iterations++;
             }
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
 
-        // Get color from scheme
-        function getColor(value, scheme) {
-            const stops = colorSchemes[scheme];
-            value = Math.max(0, Math.min(1, value));
+        function applyBrush(canvasX, canvasY) {
+            const rect = canvas.getBoundingClientRect();
+            const size = state.resolution;
 
-            for (let i = 0; i < stops.length - 1; i++) {
-                if (value >= stops[i].pos && value <= stops[i + 1].pos) {
-                    const t = (value - stops[i].pos) / (stops[i + 1].pos - stops[i].pos);
-                    return [
-                        Math.round(stops[i].color[0] + t * (stops[i + 1].color[0] - stops[i].color[0])),
-                        Math.round(stops[i].color[1] + t * (stops[i + 1].color[1] - stops[i].color[1])),
-                        Math.round(stops[i].color[2] + t * (stops[i + 1].color[2] - stops[i].color[2]))
-                    ];
-                }
-            }
-            return stops[stops.length - 1].color;
+            const x = (canvasX / rect.width) * size;
+            const y = (1 - canvasY / rect.height) * size;
+
+            gl.viewport(0, 0, size, size);
+            gl.useProgram(brushProgram);
+            gl.bindVertexArray(quadVAO);
+
+            const readTex = currentTex;
+            const writeTex = 1 - currentTex;
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[writeTex]);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, textures[readTex]);
+
+            gl.uniform1i(gl.getUniformLocation(brushProgram, 'u_state'), 0);
+            gl.uniform2f(gl.getUniformLocation(brushProgram, 'u_resolution'), size, size);
+            gl.uniform2f(gl.getUniformLocation(brushProgram, 'u_brushPos'), x, y);
+            gl.uniform1f(gl.getUniformLocation(brushProgram, 'u_brushSize'), state.brushSize * (size / 512));
+            gl.uniform1f(gl.getUniformLocation(brushProgram, 'u_brushMode'), state.brushMode === 'add' ? 1.0 : -1.0);
+
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            currentTex = writeTex;
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
 
-        // Calculate hillshade
-        function getHillshade(x, y) {
-            const xp = (x + 1) % size;
-            const xm = (x - 1 + size) % size;
-            const yp = (y + 1) % size;
-            const ym = (y - 1 + size) % size;
-
-            const dzdx = (gridB[y * size + xp] - gridB[y * size + xm]) / 2;
-            const dzdy = (gridB[yp * size + x] - gridB[ym * size + x]) / 2;
-
-            const angleRad = state.lightAngle * Math.PI / 180;
-            const azimuth = angleRad;
-            const altitude = Math.PI / 4;
-
-            const slope = Math.sqrt(dzdx * dzdx + dzdy * dzdy) * 5;
-            const aspect = Math.atan2(dzdy, -dzdx);
-
-            const shade = Math.cos(altitude) * Math.sin(Math.atan(slope)) *
-                          Math.cos(azimuth - aspect) +
-                          Math.sin(altitude) * Math.cos(Math.atan(slope));
-
-            return Math.max(0.3, Math.min(1, shade * 0.5 + 0.5));
-        }
-
-        // Render 2D view
         function render2D() {
-            const imageData = renderCtx.createImageData(size, size);
-            const data = imageData.data;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
 
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    const idx = y * size + x;
-                    const pIdx = idx * 4;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.useProgram(renderProgram);
+            gl.bindVertexArray(quadVAO);
 
-                    const value = gridB[idx];
-                    let [r, g, b] = getColor(value, state.colorScheme);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
+            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_state'), 0);
 
-                    // Apply hillshade
-                    if (state.showHillshade) {
-                        const shade = getHillshade(x, y);
-                        r = Math.round(r * shade);
-                        g = Math.round(g * shade);
-                        b = Math.round(b * shade);
-                    }
+            gl.uniform2f(gl.getUniformLocation(renderProgram, 'u_resolution'), state.resolution, state.resolution);
+            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_colorScheme'), state.colorScheme);
+            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_showContours'), state.showContours);
+            gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_contourInterval'), state.contourInterval);
+            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_showHillshade'), state.showHillshade);
+            gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_lightAngle'), state.lightAngle);
+            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_showGrid'), state.showGrid);
 
-                    // Contour lines
-                    if (state.showContours) {
-                        const interval = state.contourInterval;
-                        const contourVal = value % interval;
-                        if (contourVal < 0.01 || contourVal > interval - 0.01) {
-                            r = Math.round(r * 0.4);
-                            g = Math.round(g * 0.4);
-                            b = Math.round(b * 0.4);
-                        }
-                    }
-
-                    data[pIdx] = r;
-                    data[pIdx + 1] = g;
-                    data[pIdx + 2] = b;
-                    data[pIdx + 3] = 255;
-                }
-            }
-
-            renderCtx.putImageData(imageData, 0, 0);
-
-            // Grid overlay
-            if (state.showGrid) {
-                renderCtx.strokeStyle = 'rgba(92, 64, 51, 0.3)';
-                renderCtx.lineWidth = 0.5;
-                const gridSpacing = size / 8;
-                for (let i = 0; i <= 8; i++) {
-                    renderCtx.beginPath();
-                    renderCtx.moveTo(i * gridSpacing, 0);
-                    renderCtx.lineTo(i * gridSpacing, size);
-                    renderCtx.stroke();
-                    renderCtx.beginPath();
-                    renderCtx.moveTo(0, i * gridSpacing);
-                    renderCtx.lineTo(size, i * gridSpacing);
-                    renderCtx.stroke();
-                }
-            }
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
 
-        // Three.js setup
+        // Three.js 3D visualization
         function initThree() {
             const container = document.getElementById('three-container');
-            const rect = container.getBoundingClientRect();
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf4f1e8);
@@ -812,10 +1052,8 @@
             updateCameraPosition();
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(rect.width || 512, rect.height || 512);
             container.appendChild(renderer.domElement);
 
-            // Lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
@@ -823,7 +1061,6 @@
             directionalLight.position.set(1, 1, 1);
             scene.add(directionalLight);
 
-            // Create terrain mesh
             createTerrainMesh();
             createWaterMesh();
 
@@ -834,16 +1071,12 @@
                 lastMouseY = e.clientY;
             });
 
-            window.addEventListener('mouseup', () => {
-                isDragging3D = false;
-            });
+            window.addEventListener('mouseup', () => isDragging3D = false);
 
             window.addEventListener('mousemove', (e) => {
                 if (!isDragging3D) return;
-                const dx = e.clientX - lastMouseX;
-                const dy = e.clientY - lastMouseY;
-                orbitTheta -= dx * 0.01;
-                orbitPhi = Math.max(0.1, Math.min(Math.PI / 2, orbitPhi - dy * 0.01));
+                orbitTheta -= (e.clientX - lastMouseX) * 0.01;
+                orbitPhi = Math.max(0.1, Math.min(Math.PI / 2, orbitPhi - (e.clientY - lastMouseY) * 0.01));
                 updateCameraPosition();
                 lastMouseX = e.clientX;
                 lastMouseY = e.clientY;
@@ -864,12 +1097,12 @@
         }
 
         function createTerrainMesh() {
-            const geometry = new THREE.PlaneGeometry(2, 2, size - 1, size - 1);
+            const segments = Math.min(state.resolution - 1, 255);
+            const geometry = new THREE.PlaneGeometry(2, 2, segments, segments);
             const material = new THREE.MeshPhongMaterial({
                 vertexColors: true,
                 flatShading: false,
-                side: THREE.DoubleSide,
-                wireframe: state.showWireframe
+                side: THREE.DoubleSide
             });
 
             terrain = new THREE.Mesh(geometry, material);
@@ -894,33 +1127,97 @@
         function updateTerrainMesh() {
             if (!terrain) return;
 
+            const size = state.resolution;
+            const data = new Float32Array(size * size * 4);
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentTex]);
+            gl.readPixels(0, 0, size, size, gl.RGBA, gl.FLOAT, data);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
             const positions = terrain.geometry.attributes.position.array;
-            const colors = new Float32Array(positions.length);
+            const segments = Math.min(size - 1, 255);
+            const vertCount = (segments + 1) * (segments + 1);
+            const colors = new Float32Array(vertCount * 3);
 
-            for (let i = 0; i < size; i++) {
-                for (let j = 0; j < size; j++) {
-                    const idx = i * size + j;
-                    const vertIdx = idx * 3;
+            const colorFuncs = [
+                classicTopoJS, bathymetricJS, marsJS, greyscaleJS, heatmapJS
+            ];
+            const colorFunc = colorFuncs[state.colorScheme];
 
-                    const value = gridB[idx];
-                    positions[vertIdx + 2] = value * state.exaggeration * 0.3;
+            for (let j = 0; j <= segments; j++) {
+                for (let i = 0; i <= segments; i++) {
+                    const vertIdx = j * (segments + 1) + i;
 
-                    const [r, g, b] = getColor(value, state.colorScheme);
-                    colors[vertIdx] = r / 255;
-                    colors[vertIdx + 1] = g / 255;
-                    colors[vertIdx + 2] = b / 255;
+                    const sx = Math.floor((i / segments) * (size - 1));
+                    const sy = Math.floor((j / segments) * (size - 1));
+                    const dataIdx = (sy * size + sx) * 4;
+
+                    const value = data[dataIdx + 1];
+                    positions[vertIdx * 3 + 2] = value * state.exaggeration * 0.3;
+
+                    const [r, g, b] = colorFunc(value);
+                    colors[vertIdx * 3] = r;
+                    colors[vertIdx * 3 + 1] = g;
+                    colors[vertIdx * 3 + 2] = b;
                 }
             }
 
             terrain.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
             terrain.geometry.attributes.position.needsUpdate = true;
             terrain.geometry.computeVertexNormals();
-
             terrain.material.wireframe = state.showWireframe;
 
-            // Update water
             waterMesh.visible = state.showWater;
             waterMesh.position.y = state.waterLevel * state.exaggeration * 0.3;
+        }
+
+        // JS color functions for 3D
+        function classicTopoJS(v) {
+            if (v < 0.2) return mix3([0.102, 0.322, 0.463], [0.180, 0.490, 0.196], v / 0.2);
+            if (v < 0.4) return mix3([0.180, 0.490, 0.196], [0.486, 0.702, 0.259], (v - 0.2) / 0.2);
+            if (v < 0.5) return mix3([0.486, 0.702, 0.259], [0.788, 0.706, 0.345], (v - 0.4) / 0.1);
+            if (v < 0.7) return mix3([0.788, 0.706, 0.345], [0.545, 0.353, 0.169], (v - 0.5) / 0.2);
+            if (v < 0.85) return mix3([0.545, 0.353, 0.169], [0.5, 0.5, 0.5], (v - 0.7) / 0.15);
+            return mix3([0.5, 0.5, 0.5], [1.0, 1.0, 1.0], (v - 0.85) / 0.15);
+        }
+
+        function bathymetricJS(v) {
+            if (v < 0.2) return mix3([0.0, 0.0, 0.314], [0.0, 0.196, 0.588], v / 0.2);
+            if (v < 0.35) return mix3([0.0, 0.196, 0.588], [0.0, 0.588, 0.784], (v - 0.2) / 0.15);
+            if (v < 0.45) return mix3([0.0, 0.588, 0.784], [0.588, 0.863, 0.784], (v - 0.35) / 0.1);
+            if (v < 0.5) return mix3([0.588, 0.863, 0.784], [0.180, 0.490, 0.196], (v - 0.45) / 0.05);
+            if (v < 0.7) return mix3([0.180, 0.490, 0.196], [0.545, 0.353, 0.169], (v - 0.5) / 0.2);
+            if (v < 0.9) return mix3([0.545, 0.353, 0.169], [0.784, 0.784, 0.784], (v - 0.7) / 0.2);
+            return mix3([0.784, 0.784, 0.784], [1.0, 1.0, 1.0], (v - 0.9) / 0.1);
+        }
+
+        function marsJS(v) {
+            if (v < 0.3) return mix3([0.235, 0.078, 0.039], [0.588, 0.235, 0.118], v / 0.3);
+            if (v < 0.5) return mix3([0.588, 0.235, 0.118], [0.784, 0.392, 0.196], (v - 0.3) / 0.2);
+            if (v < 0.7) return mix3([0.784, 0.392, 0.196], [0.863, 0.588, 0.392], (v - 0.5) / 0.2);
+            if (v < 0.9) return mix3([0.863, 0.588, 0.392], [0.941, 0.784, 0.706], (v - 0.7) / 0.2);
+            return mix3([0.941, 0.784, 0.706], [1.0, 0.941, 0.902], (v - 0.9) / 0.1);
+        }
+
+        function greyscaleJS(v) {
+            const c = v * 0.9 + 0.08;
+            return [c, c, c];
+        }
+
+        function heatmapJS(v) {
+            if (v < 0.25) return mix3([0.0, 0.0, 0.392], [0.0, 0.392, 0.784], v / 0.25);
+            if (v < 0.5) return mix3([0.0, 0.392, 0.784], [1.0, 1.0, 1.0], (v - 0.25) / 0.25);
+            if (v < 0.75) return mix3([1.0, 1.0, 1.0], [1.0, 0.588, 0.0], (v - 0.5) / 0.25);
+            return mix3([1.0, 0.588, 0.0], [0.784, 0.0, 0.0], (v - 0.75) / 0.25);
+        }
+
+        function mix3(a, b, t) {
+            t = Math.max(0, Math.min(1, t));
+            return [
+                a[0] + (b[0] - a[0]) * t,
+                a[1] + (b[1] - a[1]) * t,
+                a[2] + (b[2] - a[2]) * t
+            ];
         }
 
         function render3D() {
@@ -929,29 +1226,13 @@
             renderer.render(scene, camera);
         }
 
-        // Brush interaction
-        function applyBrush(canvasX, canvasY) {
-            const rect = renderCanvas.getBoundingClientRect();
-            const x = Math.floor((canvasX / rect.width) * size);
-            const y = Math.floor((canvasY / rect.height) * size);
-            const radius = state.brushSize * (size / rect.width);
-
-            for (let dy = -radius; dy <= radius; dy++) {
-                for (let dx = -radius; dx <= radius; dx++) {
-                    if (dx * dx + dy * dy <= radius * radius) {
-                        const px = (x + dx + size) % size;
-                        const py = (y + dy + size) % size;
-                        const idx = py * size + px;
-
-                        if (state.brushMode === 'add') {
-                            gridB[idx] = Math.min(1, gridB[idx] + 0.3);
-                        } else {
-                            gridB[idx] = Math.max(0, gridB[idx] - 0.3);
-                            gridA[idx] = 1.0;
-                        }
-                    }
-                }
-            }
+        function resizeThreeRenderer() {
+            if (!renderer) return;
+            const container = document.getElementById('three-container');
+            const rect = container.getBoundingClientRect();
+            renderer.setSize(rect.width, rect.height);
+            camera.aspect = rect.width / rect.height;
+            camera.updateProjectionMatrix();
         }
 
         // FPS tracking
@@ -1018,6 +1299,16 @@
                 }
             });
 
+            // Resolution change
+            document.getElementById('resolution').addEventListener('change', (e) => {
+                state.resolution = parseInt(e.target.value);
+                initTextures();
+                if (terrain) {
+                    scene.remove(terrain);
+                    createTerrainMesh();
+                }
+            });
+
             // Presets
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -1041,9 +1332,7 @@
             });
 
             // Reset
-            document.getElementById('reset').addEventListener('click', () => {
-                initGrids();
-            });
+            document.getElementById('reset').addEventListener('click', resetSimulation);
 
             // Seed
             document.getElementById('seed').addEventListener('click', seedPattern);
@@ -1063,7 +1352,7 @@
 
             // Color scheme
             document.getElementById('color-scheme').addEventListener('change', (e) => {
-                state.colorScheme = e.target.value;
+                state.colorScheme = parseInt(e.target.value);
             });
 
             // Toggles
@@ -1125,42 +1414,40 @@
             // Canvas interaction
             let isDrawing = false;
 
-            renderCanvas.addEventListener('mousedown', (e) => {
+            canvas.addEventListener('mousedown', (e) => {
+                if (state.viewMode !== '2d') return;
                 isDrawing = true;
-                const rect = renderCanvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 applyBrush(e.clientX - rect.left, e.clientY - rect.top);
             });
 
-            renderCanvas.addEventListener('mousemove', (e) => {
-                if (!isDrawing) return;
-                const rect = renderCanvas.getBoundingClientRect();
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing || state.viewMode !== '2d') return;
+                const rect = canvas.getBoundingClientRect();
                 applyBrush(e.clientX - rect.left, e.clientY - rect.top);
             });
 
-            window.addEventListener('mouseup', () => {
-                isDrawing = false;
-            });
+            window.addEventListener('mouseup', () => isDrawing = false);
 
             // Touch support
-            renderCanvas.addEventListener('touchstart', (e) => {
+            canvas.addEventListener('touchstart', (e) => {
+                if (state.viewMode !== '2d') return;
                 e.preventDefault();
                 isDrawing = true;
                 const touch = e.touches[0];
-                const rect = renderCanvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 applyBrush(touch.clientX - rect.left, touch.clientY - rect.top);
             });
 
-            renderCanvas.addEventListener('touchmove', (e) => {
+            canvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing || state.viewMode !== '2d') return;
                 e.preventDefault();
-                if (!isDrawing) return;
                 const touch = e.touches[0];
-                const rect = renderCanvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 applyBrush(touch.clientX - rect.left, touch.clientY - rect.top);
             });
 
-            renderCanvas.addEventListener('touchend', () => {
-                isDrawing = false;
-            });
+            canvas.addEventListener('touchend', () => isDrawing = false);
         }
 
         function updateParamMarker() {
@@ -1178,38 +1465,17 @@
             preview.style.height = `${size}px`;
         }
 
-        function resizeCanvas() {
-            const wrapper = document.querySelector('.canvas-wrapper');
-            const rect = wrapper.getBoundingClientRect();
-            renderCanvas.style.width = `${rect.width}px`;
-            renderCanvas.style.height = `${rect.height}px`;
-        }
-
-        function resizeThreeRenderer() {
-            if (!renderer) return;
-            const container = document.getElementById('three-container');
-            const rect = container.getBoundingClientRect();
-            renderer.setSize(rect.width, rect.height);
-            camera.aspect = rect.width / rect.height;
-            camera.updateProjectionMatrix();
-        }
-
         // Initialize
         window.addEventListener('load', () => {
-            initGrids();
-            seedPattern();
+            if (!initWebGL()) return;
             setupUI();
             updateParamMarker();
             updateBrushPreview();
-            resizeCanvas();
             initThree();
             animate();
         });
 
-        window.addEventListener('resize', () => {
-            resizeCanvas();
-            resizeThreeRenderer();
-        });
+        window.addEventListener('resize', resizeThreeRenderer);
     </script>
 </body>
 </html>
