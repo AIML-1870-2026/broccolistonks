@@ -1,74 +1,85 @@
-# Technical Specification: Turing Patterns Quest
+# Technical Specification: Mitosis - Turing Patterns
 
 ## 1. Project Overview
 
-Turing Patterns Quest is an interactive web-based simulation and educational tool designed to visualize Alan Turing's "Reaction-Diffusion" theory. The project aims to demonstrate how complex biological patterns (like tiger stripes or leopard spots) emerge from the interaction of two simple chemicals.
+Mitosis is an interactive web-based simulation visualizing Alan Turing's reaction-diffusion theory through the lens of cellular division. The project demonstrates how the Gray-Scott model creates blob-like patterns that split and multiply—mirroring the biological process of mitosis.
 
 ## 2. System Architecture
 
-The application follows a client-side heavy architecture to ensure real-time simulation performance.
+Single-file client-side application optimized for real-time GPU-accelerated simulation.
 
 ### 2.1 Technology Stack
 
-- **Frontend**: React.js or Vue.js for the UI layer.
-- **Simulation Engine**: WebGL/GLSL (Fragment Shaders) for GPU-accelerated computation.
-- **State Management**: Context API or Redux for handling simulation parameters.
-- **Math Library**: Gl-matrix or similar for vector/matrix operations.
+- **Rendering**: WebGL 1.0/2.0 with GLSL fragment shaders
+- **Simulation**: Gray-Scott reaction-diffusion model
+- **Technique**: Double-buffer (ping-pong) texture swapping
 
 ## 3. Functional Requirements
 
 ### 3.1 Reaction-Diffusion Engine
 
-The core of the application must solve the Gray-Scott model equations:
+Gray-Scott model parameters tuned for mitosis-like patterns:
 
-- **Feed Rate ($f$)**: Controls the addition of chemical $A$.
-- **Kill Rate ($k$)**: Controls the removal of chemical $B$.
-- **Diffusion Rates ($D_a, D_b$)**: The speeds at which chemicals spread.
+- **Feed Rate (f)**: 0.0367 (default) - Controls chemical A replenishment
+- **Kill Rate (k)**: 0.0649 (default) - Controls chemical B removal
+- **Diffusion Rates**: Da = 1.0, Db = 0.5
 
-### 3.2 Interactive Features
+### 3.2 Cell Cycle Phases
 
-- **Real-time Parameter Adjustment**: Sliders to modify $f$, $k$, and diffusion rates without resetting the simulation.
-- **Canvas Interaction**: Users can "draw" on the canvas to inject chemical $B$ and observe how patterns grow from the disturbance.
-- **Presets Gallery**: A collection of pre-defined $f/k$ values that produce specific patterns (e.g., "Mitosis," "Coral," "Fingerprints").
+Six preset parameter configurations representing mitosis phases:
 
-### 3.3 Educational Content
+| Phase | Feed (f) | Kill (k) | Description |
+|-------|----------|----------|-------------|
+| Interphase | 0.0367 | 0.0649 | Growth & DNA replication |
+| Prophase | 0.0380 | 0.0640 | Chromatin condenses |
+| Metaphase | 0.0390 | 0.0630 | Chromosomes align |
+| Anaphase | 0.0350 | 0.0655 | Separation begins |
+| Telophase | 0.0340 | 0.0660 | Nuclear division |
+| Cytokinesis | 0.0320 | 0.0665 | Cell splits in two |
 
-- **Narrative Stepping**: A guided "Quest" mode that introduces concepts one by one.
-- **Visualization Modes**: Toggle between grayscale (chemical concentration) and false-color heatmaps.
+### 3.3 Interactive Features
+
+- **Real-time Parameter Adjustment**: Sliders for f, k, Da, Db
+- **Canvas Interaction**: Click/drag to seed new cells (inject chemical B)
+- **Brush Size Control**: Mouse wheel or slider
+- **Phase Presets**: One-click phase selection
+
+### 3.4 Visualization Modes
+
+- **Cellular**: Purple cytoplasm to pink nucleus gradient
+- **Membrane**: Edge-detection highlighting cell boundaries
+- **X-Ray**: Grayscale microscope-style view
 
 ## 4. Technical Requirements
 
 ### 4.1 Performance
 
-- The simulation must maintain 60 FPS at a resolution of at least 512x512 pixels.
-- Calculation must be performed on the GPU using a double-buffer (ping-pong) texture technique.
+- 60 FPS at 512x512 resolution
+- 10 simulation steps per frame
+- Adaptive resolution (256-768px based on screen size)
 
 ### 4.2 Compatibility
 
-- Must support WebGL 1.0/2.0 enabled browsers (Chrome, Firefox, Safari, Edge).
-- Responsive design to allow mobile interaction (touch-based chemical injection).
+- WebGL 1.0/2.0 browsers (Chrome, Firefox, Safari, Edge)
+- Touch support for mobile devices
+- Responsive UI
 
 ## 5. UI/UX Design
 
-- **Minimalist Interface**: Floating control panel to maximize the visual area of the simulation.
-- **Exploration Map**: A 2D plot of the $f/k$ parameter space where users can click to jump to different "phases" of pattern formation.
+- **Cellular Aesthetic**: Purple/pink color scheme evoking biological imagery
+- **Floating Control Panel**: Minimalist, translucent design
+- **Info Panel**: Educational content about Turing patterns and cell division
 
-## 6. Data Schema (Presets)
-
-Presets should be stored in a JSON format:
+## 6. Data Schema (Phases)
 
 ```json
 {
-  "presetName": "Brain Coral",
-  "feed": 0.0545,
-  "kill": 0.062,
+  "phaseName": "interphase",
+  "name": "Interphase",
+  "feed": 0.0367,
+  "kill": 0.0649,
   "da": 1.0,
-  "db": 0.5
+  "db": 0.5,
+  "desc": "Cells grow and replicate DNA. Patterns form slowly and remain stable."
 }
 ```
-
-## 7. Future Roadmap
-
-- **3D Implementation**: Extending the reaction-diffusion to a 3D volumetric renderer.
-- **Export Functionality**: Allow users to export high-resolution frames or GIFs of their patterns.
-- **Multi-Chemical Systems**: Incorporating a third chemical to simulate more complex biological morphogenesis.

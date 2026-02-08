@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turing Patterns Quest</title>
+    <title>Mitosis - Turing Patterns</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         body {
-            background: #0a0a0f;
+            background: #0a0812;
             color: #e0e0e0;
             font-family: 'Segoe UI', system-ui, sans-serif;
             overflow: hidden;
@@ -33,8 +33,8 @@
             position: fixed;
             top: 20px;
             left: 20px;
-            background: rgba(10, 10, 20, 0.9);
-            border: 1px solid rgba(100, 200, 255, 0.3);
+            background: rgba(15, 10, 25, 0.92);
+            border: 1px solid rgba(180, 100, 255, 0.3);
             border-radius: 12px;
             padding: 20px;
             width: 280px;
@@ -45,9 +45,9 @@
         }
 
         .control-panel h1 {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             margin-bottom: 5px;
-            background: linear-gradient(135deg, #64b5f6, #ce93d8);
+            background: linear-gradient(135deg, #b388ff, #ff80ab);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -60,16 +60,16 @@
         }
 
         .section {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .section-title {
             font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #64b5f6;
+            color: #b388ff;
             margin-bottom: 10px;
-            border-bottom: 1px solid rgba(100, 200, 255, 0.2);
+            border-bottom: 1px solid rgba(180, 100, 255, 0.2);
             padding-bottom: 5px;
         }
 
@@ -85,7 +85,7 @@
         }
 
         .slider-label span:last-child {
-            color: #64b5f6;
+            color: #b388ff;
             font-family: 'Courier New', monospace;
         }
 
@@ -93,7 +93,7 @@
             width: 100%;
             height: 6px;
             -webkit-appearance: none;
-            background: rgba(100, 200, 255, 0.2);
+            background: rgba(180, 100, 255, 0.2);
             border-radius: 3px;
             outline: none;
         }
@@ -102,36 +102,48 @@
             -webkit-appearance: none;
             width: 16px;
             height: 16px;
-            background: linear-gradient(135deg, #64b5f6, #ce93d8);
+            background: linear-gradient(135deg, #b388ff, #ff80ab);
             border-radius: 50%;
             cursor: pointer;
         }
 
-        .presets-grid {
+        .phase-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 8px;
         }
 
-        .preset-btn {
-            background: rgba(100, 200, 255, 0.1);
-            border: 1px solid rgba(100, 200, 255, 0.3);
+        .phase-btn {
+            background: rgba(180, 100, 255, 0.1);
+            border: 1px solid rgba(180, 100, 255, 0.3);
             color: #e0e0e0;
-            padding: 8px;
+            padding: 10px 8px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.75rem;
             transition: all 0.2s;
+            text-align: center;
         }
 
-        .preset-btn:hover {
-            background: rgba(100, 200, 255, 0.2);
-            border-color: rgba(100, 200, 255, 0.5);
+        .phase-btn:hover {
+            background: rgba(180, 100, 255, 0.2);
+            border-color: rgba(180, 100, 255, 0.5);
         }
 
-        .preset-btn.active {
-            background: rgba(100, 200, 255, 0.3);
-            border-color: #64b5f6;
+        .phase-btn.active {
+            background: rgba(180, 100, 255, 0.3);
+            border-color: #b388ff;
+        }
+
+        .phase-btn .phase-name {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .phase-btn .phase-desc {
+            font-size: 0.65rem;
+            color: #999;
         }
 
         .viz-toggle {
@@ -141,8 +153,8 @@
 
         .viz-btn {
             flex: 1;
-            background: rgba(100, 200, 255, 0.1);
-            border: 1px solid rgba(100, 200, 255, 0.3);
+            background: rgba(180, 100, 255, 0.1);
+            border: 1px solid rgba(180, 100, 255, 0.3);
             color: #e0e0e0;
             padding: 10px;
             border-radius: 6px;
@@ -152,135 +164,45 @@
         }
 
         .viz-btn.active {
-            background: linear-gradient(135deg, rgba(100, 181, 246, 0.3), rgba(206, 147, 216, 0.3));
-            border-color: #64b5f6;
+            background: linear-gradient(135deg, rgba(179, 136, 255, 0.3), rgba(255, 128, 171, 0.3));
+            border-color: #b388ff;
         }
 
         .action-btn {
             width: 100%;
-            background: linear-gradient(135deg, #64b5f6, #ce93d8);
+            background: linear-gradient(135deg, #b388ff, #ff80ab);
             border: none;
-            color: #0a0a0f;
+            color: #0a0812;
             padding: 12px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.9rem;
             font-weight: 600;
-            margin-top: 10px;
+            margin-top: 8px;
             transition: all 0.2s;
         }
 
         .action-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(100, 181, 246, 0.3);
+            box-shadow: 0 4px 15px rgba(179, 136, 255, 0.3);
         }
 
-        .param-space {
-            position: relative;
-            width: 100%;
-            height: 120px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(100, 200, 255, 0.3);
-            border-radius: 6px;
-            cursor: crosshair;
-            margin-top: 10px;
-        }
-
-        .param-space canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 5px;
-        }
-
-        .param-marker {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: #fff;
-            border: 2px solid #64b5f6;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            box-shadow: 0 0 10px rgba(100, 181, 246, 0.5);
-        }
-
-        .quest-panel {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(10, 10, 20, 0.95);
-            border: 1px solid rgba(100, 200, 255, 0.3);
-            border-radius: 12px;
-            padding: 20px 30px;
-            max-width: 600px;
-            width: calc(100% - 40px);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            display: none;
-        }
-
-        .quest-panel.active {
-            display: block;
-        }
-
-        .quest-step {
-            font-size: 0.8rem;
-            color: #64b5f6;
-            margin-bottom: 5px;
-        }
-
-        .quest-title {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
-        }
-
-        .quest-text {
-            font-size: 0.9rem;
-            color: #aaa;
-            line-height: 1.5;
-            margin-bottom: 15px;
-        }
-
-        .quest-nav {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .quest-nav button {
-            background: rgba(100, 200, 255, 0.2);
-            border: 1px solid rgba(100, 200, 255, 0.4);
+        .action-btn.secondary {
+            background: rgba(180, 100, 255, 0.2);
             color: #e0e0e0;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s;
-        }
-
-        .quest-nav button:hover {
-            background: rgba(100, 200, 255, 0.3);
-        }
-
-        .quest-nav button.primary {
-            background: linear-gradient(135deg, #64b5f6, #ce93d8);
-            border: none;
-            color: #0a0a0f;
-            font-weight: 600;
         }
 
         .stats {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(10, 10, 20, 0.8);
-            border: 1px solid rgba(100, 200, 255, 0.2);
+            background: rgba(15, 10, 25, 0.85);
+            border: 1px solid rgba(180, 100, 255, 0.2);
             border-radius: 8px;
             padding: 10px 15px;
             font-size: 0.75rem;
             font-family: 'Courier New', monospace;
-            color: #64b5f6;
+            color: #b388ff;
             z-index: 100;
         }
 
@@ -288,27 +210,78 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: rgba(10, 10, 20, 0.8);
-            border: 1px solid rgba(100, 200, 255, 0.2);
+            background: rgba(15, 10, 25, 0.85);
+            border: 1px solid rgba(180, 100, 255, 0.2);
             border-radius: 8px;
-            padding: 10px 15px;
+            padding: 12px 15px;
             font-size: 0.75rem;
             color: #888;
             z-index: 100;
         }
 
         .instructions strong {
-            color: #64b5f6;
+            color: #b388ff;
+        }
+
+        .info-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 10, 25, 0.95);
+            border: 1px solid rgba(180, 100, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px 25px;
+            max-width: 500px;
+            width: calc(100% - 340px);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: none;
+        }
+
+        .info-panel.active {
+            display: block;
+        }
+
+        .info-panel h3 {
+            color: #b388ff;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .info-panel p {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.5;
+        }
+
+        .cell-count {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(180, 100, 255, 0.1);
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .cell-count span {
+            color: #ff80ab;
+            font-weight: 600;
         }
 
         @media (max-width: 768px) {
             .control-panel {
                 width: calc(100% - 40px);
-                max-height: 50vh;
+                max-height: 45vh;
             }
 
             .stats, .instructions {
                 display: none;
+            }
+
+            .info-panel {
+                width: calc(100% - 40px);
+                bottom: auto;
+                top: auto;
             }
         }
     </style>
@@ -317,85 +290,97 @@
     <canvas id="canvas"></canvas>
 
     <div class="control-panel">
-        <h1>Turing Patterns Quest</h1>
-        <p class="subtitle">Reaction-Diffusion Simulation</p>
+        <h1>Mitosis</h1>
+        <p class="subtitle">Cellular Division Patterns</p>
 
         <div class="section">
-            <div class="section-title">Parameters</div>
+            <div class="section-title">Cell Cycle Phases</div>
+            <div class="phase-grid">
+                <button class="phase-btn active" data-phase="interphase">
+                    <span class="phase-name">Interphase</span>
+                    <span class="phase-desc">Growth & DNA replication</span>
+                </button>
+                <button class="phase-btn" data-phase="prophase">
+                    <span class="phase-name">Prophase</span>
+                    <span class="phase-desc">Chromatin condenses</span>
+                </button>
+                <button class="phase-btn" data-phase="metaphase">
+                    <span class="phase-name">Metaphase</span>
+                    <span class="phase-desc">Chromosomes align</span>
+                </button>
+                <button class="phase-btn" data-phase="anaphase">
+                    <span class="phase-name">Anaphase</span>
+                    <span class="phase-desc">Separation begins</span>
+                </button>
+                <button class="phase-btn" data-phase="telophase">
+                    <span class="phase-name">Telophase</span>
+                    <span class="phase-desc">Nuclear division</span>
+                </button>
+                <button class="phase-btn" data-phase="cytokinesis">
+                    <span class="phase-name">Cytokinesis</span>
+                    <span class="phase-desc">Cell splits in two</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Reaction Parameters</div>
 
             <div class="slider-group">
                 <div class="slider-label">
                     <span>Feed Rate (f)</span>
-                    <span id="feedValue">0.0550</span>
+                    <span id="feedValue">0.0367</span>
                 </div>
-                <input type="range" id="feedRate" min="0.01" max="0.1" step="0.0001" value="0.055">
+                <input type="range" id="feedRate" min="0.01" max="0.08" step="0.0001" value="0.0367">
             </div>
 
             <div class="slider-group">
                 <div class="slider-label">
                     <span>Kill Rate (k)</span>
-                    <span id="killValue">0.0620</span>
+                    <span id="killValue">0.0649</span>
                 </div>
-                <input type="range" id="killRate" min="0.03" max="0.07" step="0.0001" value="0.062">
+                <input type="range" id="killRate" min="0.04" max="0.07" step="0.0001" value="0.0649">
             </div>
 
             <div class="slider-group">
                 <div class="slider-label">
-                    <span>Diffusion A (Da)</span>
+                    <span>Diffusion A</span>
                     <span id="daValue">1.00</span>
                 </div>
-                <input type="range" id="diffusionA" min="0.1" max="2.0" step="0.01" value="1.0">
+                <input type="range" id="diffusionA" min="0.5" max="1.5" step="0.01" value="1.0">
             </div>
 
             <div class="slider-group">
                 <div class="slider-label">
-                    <span>Diffusion B (Db)</span>
+                    <span>Diffusion B</span>
                     <span id="dbValue">0.50</span>
                 </div>
-                <input type="range" id="diffusionB" min="0.1" max="1.0" step="0.01" value="0.5">
-            </div>
-
-            <div class="slider-group">
-                <div class="slider-label">
-                    <span>Brush Size</span>
-                    <span id="brushValue">20</span>
-                </div>
-                <input type="range" id="brushSize" min="5" max="50" step="1" value="20">
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Presets</div>
-            <div class="presets-grid">
-                <button class="preset-btn" data-preset="coral">Brain Coral</button>
-                <button class="preset-btn" data-preset="mitosis">Mitosis</button>
-                <button class="preset-btn" data-preset="fingerprint">Fingerprints</button>
-                <button class="preset-btn" data-preset="spots">Leopard Spots</button>
-                <button class="preset-btn" data-preset="stripes">Tiger Stripes</button>
-                <button class="preset-btn" data-preset="maze">Maze</button>
-                <button class="preset-btn" data-preset="waves">Waves</button>
-                <button class="preset-btn" data-preset="worms">Worms</button>
+                <input type="range" id="diffusionB" min="0.2" max="0.8" step="0.01" value="0.5">
             </div>
         </div>
 
         <div class="section">
             <div class="section-title">Visualization</div>
             <div class="viz-toggle">
-                <button class="viz-btn active" data-viz="heatmap">Heatmap</button>
-                <button class="viz-btn" data-viz="grayscale">Grayscale</button>
+                <button class="viz-btn active" data-viz="cellular">Cellular</button>
+                <button class="viz-btn" data-viz="membrane">Membrane</button>
+                <button class="viz-btn" data-viz="xray">X-Ray</button>
             </div>
         </div>
 
         <div class="section">
-            <div class="section-title">Parameter Space (f/k)</div>
-            <div class="param-space" id="paramSpace">
-                <canvas id="paramCanvas"></canvas>
-                <div class="param-marker" id="paramMarker"></div>
+            <div class="section-title">Brush Size</div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Nucleus Size</span>
+                    <span id="brushValue">15</span>
+                </div>
+                <input type="range" id="brushSize" min="5" max="40" step="1" value="15">
             </div>
         </div>
 
-        <button class="action-btn" id="resetBtn">Reset Simulation</button>
-        <button class="action-btn" id="questBtn" style="background: rgba(100, 200, 255, 0.2); color: #e0e0e0;">Start Quest Mode</button>
+        <button class="action-btn" id="resetBtn">New Cell Culture</button>
+        <button class="action-btn secondary" id="infoBtn">About Mitosis</button>
     </div>
 
     <div class="stats" id="stats">
@@ -403,70 +388,76 @@
     </div>
 
     <div class="instructions">
-        <strong>Click & Drag</strong> to inject chemical B<br>
-        <strong>Scroll</strong> to adjust brush size
+        <strong>Click & Drag</strong> to seed new cells<br>
+        <strong>Scroll</strong> to adjust nucleus size
     </div>
 
-    <div class="quest-panel" id="questPanel">
-        <div class="quest-step">Step <span id="questStepNum">1</span> of <span id="questTotalSteps">6</span></div>
-        <div class="quest-title" id="questTitle">Welcome to Turing Patterns</div>
-        <div class="quest-text" id="questText">
-            In 1952, Alan Turing proposed a mathematical model explaining how patterns in nature emerge...
-        </div>
-        <div class="quest-nav">
-            <button id="questPrev">Previous</button>
-            <button id="questNext" class="primary">Next</button>
+    <div class="info-panel" id="infoPanel">
+        <h3>Turing Patterns & Cell Division</h3>
+        <p>
+            Alan Turing's 1952 reaction-diffusion model explains how biological patterns emerge.
+            In this simulation, two chemicals (activator A and inhibitor B) interact and diffuse
+            at different rates, spontaneously forming patterns that mirror cell division.
+            The "mitosis" parameters create blob-like structures that split and multiply—
+            just like real cells undergoing division.
+        </p>
+        <div class="cell-count">
+            Current phase: <span id="currentPhase">Interphase</span>
         </div>
     </div>
 
     <script>
-        // Presets configuration
-        const presets = {
-            coral: { name: "Brain Coral", feed: 0.0545, kill: 0.062, da: 1.0, db: 0.5 },
-            mitosis: { name: "Mitosis", feed: 0.0367, kill: 0.0649, da: 1.0, db: 0.5 },
-            fingerprint: { name: "Fingerprints", feed: 0.055, kill: 0.062, da: 1.0, db: 0.5 },
-            spots: { name: "Leopard Spots", feed: 0.039, kill: 0.058, da: 1.0, db: 0.5 },
-            stripes: { name: "Tiger Stripes", feed: 0.025, kill: 0.055, da: 1.0, db: 0.5 },
-            maze: { name: "Maze", feed: 0.029, kill: 0.057, da: 1.0, db: 0.5 },
-            waves: { name: "Waves", feed: 0.014, kill: 0.054, da: 1.0, db: 0.5 },
-            worms: { name: "Worms", feed: 0.078, kill: 0.061, da: 1.0, db: 0.5 }
-        };
-
-        // Quest content
-        const questSteps = [
-            {
-                title: "Welcome to Turing Patterns",
-                text: "In 1952, Alan Turing—yes, the same Turing who cracked the Enigma code—proposed a mathematical model explaining how patterns in nature emerge. He showed that two simple chemicals interacting could spontaneously create stripes, spots, and complex shapes. Let's explore this remarkable discovery!"
+        // Cell cycle phases with different parameters
+        const phases = {
+            interphase: {
+                name: "Interphase",
+                feed: 0.0367,
+                kill: 0.0649,
+                da: 1.0,
+                db: 0.5,
+                desc: "Cells grow and replicate DNA. Patterns form slowly and remain stable."
             },
-            {
-                title: "The Two Chemicals",
-                text: "Imagine two chemicals: A (the activator) and B (the inhibitor). Chemical A promotes its own production AND the production of B. But B suppresses A. They also spread out (diffuse) at different rates. This simple setup creates incredible complexity!",
-                action: () => applyPreset('coral')
+            prophase: {
+                name: "Prophase",
+                feed: 0.0380,
+                kill: 0.0640,
+                da: 1.0,
+                db: 0.5,
+                desc: "Chromatin begins to condense. Patterns become more defined."
             },
-            {
-                title: "Feed and Kill Rates",
-                text: "The Feed rate (f) controls how fast we add chemical A to the system. The Kill rate (k) controls how fast chemical B is removed. These two parameters determine what patterns emerge. Try adjusting the sliders—even tiny changes create dramatically different patterns!",
-                action: () => { }
+            metaphase: {
+                name: "Metaphase",
+                feed: 0.0390,
+                kill: 0.0630,
+                da: 1.0,
+                db: 0.5,
+                desc: "Chromosomes align at the cell equator. Patterns stabilize."
             },
-            {
-                title: "Drawing Patterns",
-                text: "Click and drag on the canvas to inject chemical B. Watch how patterns grow from your disturbances! The reaction spreads outward, creating organic-looking structures. This is exactly how some biological patterns form—from local disturbances that propagate.",
-                action: () => { }
+            anaphase: {
+                name: "Anaphase",
+                feed: 0.0350,
+                kill: 0.0655,
+                da: 1.0,
+                db: 0.5,
+                desc: "Sister chromatids separate. Patterns begin to split."
             },
-            {
-                title: "The Parameter Space",
-                text: "The small 2D map in the control panel shows the 'phase diagram' of possible patterns. Different regions produce spots, stripes, or chaos. Click anywhere on it to teleport to that pattern type. Scientists call these 'Turing instabilities'.",
-                action: () => applyPreset('spots')
+            telophase: {
+                name: "Telophase",
+                feed: 0.0340,
+                kill: 0.0660,
+                da: 1.0,
+                db: 0.5,
+                desc: "Nuclear membranes reform. New daughter patterns emerge."
             },
-            {
-                title: "Nature's Patterns",
-                text: "Turing's theory explains zebra stripes, leopard spots, coral formations, and even fingerprints! Try the different presets to see these natural patterns emerge. You're now witnessing one of biology's most elegant mathematical models. Happy exploring!",
-                action: () => applyPreset('fingerprint')
+            cytokinesis: {
+                name: "Cytokinesis",
+                feed: 0.0320,
+                kill: 0.0665,
+                da: 1.0,
+                db: 0.5,
+                desc: "The cell divides in two. Patterns multiply and separate."
             }
-        ];
-
-        let currentQuestStep = 0;
-        let questActive = false;
+        };
 
         // WebGL Setup
         const canvas = document.getElementById('canvas');
@@ -478,12 +469,13 @@
 
         // Simulation parameters
         let params = {
-            feed: 0.055,
-            kill: 0.062,
+            feed: 0.0367,
+            kill: 0.0649,
             da: 1.0,
             db: 0.5,
-            brushSize: 20,
-            vizMode: 'heatmap'
+            brushSize: 15,
+            vizMode: 'cellular',
+            currentPhase: 'interphase'
         };
 
         let simWidth = 512;
@@ -494,7 +486,7 @@
         let frameCount = 0;
         let fps = 60;
 
-        // Vertex shader (shared)
+        // Vertex shader
         const vertexShaderSource = `
             attribute vec2 a_position;
             varying vec2 v_texCoord;
@@ -524,20 +516,17 @@
             void main() {
                 vec2 texel = 1.0 / u_resolution;
 
-                // Sample center and neighbors for Laplacian
                 vec4 center = texture2D(u_texture, v_texCoord);
                 vec4 left = texture2D(u_texture, v_texCoord + vec2(-texel.x, 0.0));
                 vec4 right = texture2D(u_texture, v_texCoord + vec2(texel.x, 0.0));
                 vec4 up = texture2D(u_texture, v_texCoord + vec2(0.0, texel.y));
                 vec4 down = texture2D(u_texture, v_texCoord + vec2(0.0, -texel.y));
 
-                // Diagonal neighbors for better Laplacian
                 vec4 ul = texture2D(u_texture, v_texCoord + vec2(-texel.x, texel.y));
                 vec4 ur = texture2D(u_texture, v_texCoord + vec2(texel.x, texel.y));
                 vec4 dl = texture2D(u_texture, v_texCoord + vec2(-texel.x, -texel.y));
                 vec4 dr = texture2D(u_texture, v_texCoord + vec2(texel.x, -texel.y));
 
-                // 9-point Laplacian stencil
                 vec4 laplacian = (left + right + up + down) * 0.2
                                + (ul + ur + dl + dr) * 0.05
                                - center;
@@ -545,7 +534,6 @@
                 float a = center.r;
                 float b = center.g;
 
-                // Gray-Scott equations
                 float reaction = a * b * b;
                 float da = u_da * laplacian.r - reaction + u_feed * (1.0 - a);
                 float db = u_db * laplacian.g + reaction - (u_kill + u_feed) * b;
@@ -553,13 +541,12 @@
                 float newA = a + da * u_dt;
                 float newB = b + db * u_dt;
 
-                // Mouse interaction - inject chemical B
                 if (u_mouseDown > 0.5) {
                     float dist = length(v_texCoord - u_mouse);
                     float brushRadius = u_brushSize / u_resolution.x;
                     if (dist < brushRadius) {
                         float strength = 1.0 - smoothstep(0.0, brushRadius, dist);
-                        newB = mix(newB, 1.0, strength * 0.5);
+                        newB = mix(newB, 1.0, strength * 0.6);
                     }
                 }
 
@@ -567,7 +554,7 @@
             }
         `;
 
-        // Display fragment shader
+        // Display fragment shader with cellular visualization
         const displayShaderSource = `
             precision highp float;
 
@@ -576,21 +563,45 @@
 
             varying vec2 v_texCoord;
 
-            vec3 heatmap(float t) {
-                // Custom heatmap: deep blue -> cyan -> green -> yellow -> orange -> magenta
-                vec3 c;
-                if (t < 0.2) {
-                    c = mix(vec3(0.05, 0.05, 0.2), vec3(0.1, 0.4, 0.6), t * 5.0);
-                } else if (t < 0.4) {
-                    c = mix(vec3(0.1, 0.4, 0.6), vec3(0.2, 0.7, 0.5), (t - 0.2) * 5.0);
-                } else if (t < 0.6) {
-                    c = mix(vec3(0.2, 0.7, 0.5), vec3(0.8, 0.8, 0.3), (t - 0.4) * 5.0);
-                } else if (t < 0.8) {
-                    c = mix(vec3(0.8, 0.8, 0.3), vec3(0.9, 0.4, 0.3), (t - 0.6) * 5.0);
+            vec3 cellularColor(float b) {
+                // Biological cell coloring: purple cytoplasm to pink nucleus
+                vec3 background = vec3(0.04, 0.03, 0.06);
+                vec3 cytoplasm = vec3(0.25, 0.15, 0.35);
+                vec3 membrane = vec3(0.6, 0.3, 0.5);
+                vec3 nucleus = vec3(0.95, 0.5, 0.7);
+
+                if (b < 0.15) {
+                    return mix(background, cytoplasm, b / 0.15);
+                } else if (b < 0.4) {
+                    return mix(cytoplasm, membrane, (b - 0.15) / 0.25);
+                } else if (b < 0.7) {
+                    return mix(membrane, nucleus, (b - 0.4) / 0.3);
                 } else {
-                    c = mix(vec3(0.9, 0.4, 0.3), vec3(0.8, 0.3, 0.7), (t - 0.8) * 5.0);
+                    return mix(nucleus, vec3(1.0, 0.8, 0.9), (b - 0.7) / 0.3);
                 }
-                return c;
+            }
+
+            vec3 membraneColor(float b) {
+                // Highlight cell membranes/edges
+                vec3 dark = vec3(0.02, 0.01, 0.04);
+                vec3 edge = vec3(0.8, 0.4, 0.9);
+                vec3 bright = vec3(0.4, 0.2, 0.5);
+
+                float edge_detect = abs(b - 0.5) * 2.0;
+                edge_detect = 1.0 - edge_detect;
+                edge_detect = pow(edge_detect, 3.0);
+
+                vec3 base = mix(dark, bright, b);
+                return mix(base, edge, edge_detect * 0.8);
+            }
+
+            vec3 xrayColor(float b) {
+                // X-ray/microscope style
+                float intensity = 1.0 - b;
+                vec3 color = vec3(intensity);
+                // Add slight blue tint
+                color.b += 0.1 * b;
+                return color;
             }
 
             void main() {
@@ -599,18 +610,17 @@
 
                 vec3 color;
                 if (u_vizMode == 0) {
-                    // Heatmap mode
-                    color = heatmap(b);
+                    color = cellularColor(b);
+                } else if (u_vizMode == 1) {
+                    color = membraneColor(b);
                 } else {
-                    // Grayscale mode
-                    color = vec3(1.0 - b);
+                    color = xrayColor(b);
                 }
 
                 gl_FragColor = vec4(color, 1.0);
             }
         `;
 
-        // Compile shader
         function compileShader(source, type) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
@@ -622,7 +632,6 @@
             return shader;
         }
 
-        // Create program
         function createProgram(vertexSource, fragmentSource) {
             const vertexShader = compileShader(vertexSource, gl.VERTEX_SHADER);
             const fragmentShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
@@ -640,11 +649,9 @@
             return program;
         }
 
-        // Create programs
         const simulationProgram = createProgram(vertexShaderSource, simulationShaderSource);
         const displayProgram = createProgram(vertexShaderSource, displayShaderSource);
 
-        // Create vertex buffer (fullscreen quad)
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -652,7 +659,6 @@
             -1, 1, 1, -1, 1, 1
         ]), gl.STATIC_DRAW);
 
-        // Create framebuffers and textures for ping-pong
         let textures = [];
         let framebuffers = [];
 
@@ -668,7 +674,6 @@
         }
 
         function setupBuffers() {
-            // Clean up old textures/framebuffers
             textures.forEach(t => gl.deleteTexture(t));
             framebuffers.forEach(fb => gl.deleteFramebuffer(fb));
 
@@ -684,36 +689,46 @@
         }
 
         function initializeSimulation() {
-            // Initialize with chemical A everywhere, B in center
             const data = new Uint8Array(simWidth * simHeight * 4);
 
             for (let y = 0; y < simHeight; y++) {
                 for (let x = 0; x < simWidth; x++) {
                     const idx = (y * simWidth + x) * 4;
 
-                    // A = 1.0 everywhere, B = 0.0 everywhere except center
-                    data[idx] = 255;     // A
-                    data[idx + 1] = 0;   // B
+                    data[idx] = 255;     // A = 1.0
+                    data[idx + 1] = 0;   // B = 0.0
                     data[idx + 2] = 0;
                     data[idx + 3] = 255;
 
-                    // Add some initial B in center region with noise
+                    // Create initial "cells" - scattered seed points
                     const cx = simWidth / 2;
                     const cy = simHeight / 2;
-                    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
 
-                    if (dist < 20 && Math.random() > 0.3) {
+                    // Central cluster
+                    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+                    if (dist < 25 && Math.random() > 0.4) {
                         data[idx + 1] = 255;
                     }
 
-                    // Add random seeds
-                    if (Math.random() < 0.001) {
-                        data[idx + 1] = 255;
+                    // A few scattered cells
+                    if (Math.random() < 0.0008) {
+                        // Create small circular seeds
+                        for (let dy = -3; dy <= 3; dy++) {
+                            for (let dx = -3; dx <= 3; dx++) {
+                                if (dx * dx + dy * dy <= 9) {
+                                    const nx = x + dx;
+                                    const ny = y + dy;
+                                    if (nx >= 0 && nx < simWidth && ny >= 0 && ny < simHeight) {
+                                        const nidx = (ny * simWidth + nx) * 4;
+                                        data[nidx + 1] = 255;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            // Upload to both textures
             textures.forEach(texture => {
                 gl.bindTexture(gl.TEXTURE_2D, texture);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, simWidth, simHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
@@ -725,15 +740,12 @@
         function simulate() {
             gl.useProgram(simulationProgram);
 
-            // Bind input texture
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
 
-            // Bind output framebuffer
             gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[1 - currentBuffer]);
             gl.viewport(0, 0, simWidth, simHeight);
 
-            // Set uniforms
             gl.uniform1i(gl.getUniformLocation(simulationProgram, 'u_texture'), 0);
             gl.uniform2f(gl.getUniformLocation(simulationProgram, 'u_resolution'), simWidth, simHeight);
             gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_feed'), params.feed);
@@ -745,41 +757,37 @@
             gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_brushSize'), params.brushSize);
             gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_mouseDown'), mouseDown ? 1.0 : 0.0);
 
-            // Set up vertex attribute
             const posLoc = gl.getAttribLocation(simulationProgram, 'a_position');
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.enableVertexAttribArray(posLoc);
             gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-            // Draw
             gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-            // Swap buffers
             currentBuffer = 1 - currentBuffer;
         }
 
         function display() {
             gl.useProgram(displayProgram);
 
-            // Bind simulation texture
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
 
-            // Draw to screen
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, canvas.width, canvas.height);
 
-            // Set uniforms
             gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_texture'), 0);
-            gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_vizMode'), params.vizMode === 'heatmap' ? 0 : 1);
 
-            // Set up vertex attribute
+            let vizModeInt = 0;
+            if (params.vizMode === 'membrane') vizModeInt = 1;
+            else if (params.vizMode === 'xray') vizModeInt = 2;
+            gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_vizMode'), vizModeInt);
+
             const posLoc = gl.getAttribLocation(displayProgram, 'a_position');
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.enableVertexAttribArray(posLoc);
             gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-            // Draw
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
 
@@ -788,7 +796,6 @@
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
 
-            // Adjust simulation resolution based on screen
             const minDim = Math.min(window.innerWidth, window.innerHeight);
             if (minDim < 600) {
                 simWidth = simHeight = 256;
@@ -814,8 +821,7 @@
         }
 
         function animate() {
-            // Run multiple simulation steps per frame for faster pattern development
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 10; i++) {
                 simulate();
             }
             display();
@@ -823,7 +829,6 @@
             requestAnimationFrame(animate);
         }
 
-        // Initialize
         resize();
         window.addEventListener('resize', resize);
         animate();
@@ -854,7 +859,6 @@
         canvas.addEventListener('mouseup', () => mouseDown = false);
         canvas.addEventListener('mouseleave', () => mouseDown = false);
 
-        // Touch support
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             mouseDown = true;
@@ -874,12 +878,11 @@
 
         canvas.addEventListener('touchend', () => mouseDown = false);
 
-        // Scroll to adjust brush size
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const brushInput = document.getElementById('brushSize');
             let newSize = params.brushSize - Math.sign(e.deltaY) * 2;
-            newSize = Math.max(5, Math.min(50, newSize));
+            newSize = Math.max(5, Math.min(40, newSize));
             params.brushSize = newSize;
             brushInput.value = newSize;
             document.getElementById('brushValue').textContent = newSize;
@@ -889,13 +892,13 @@
         document.getElementById('feedRate').addEventListener('input', (e) => {
             params.feed = parseFloat(e.target.value);
             document.getElementById('feedValue').textContent = params.feed.toFixed(4);
-            updateParamMarker();
+            document.querySelectorAll('.phase-btn').forEach(btn => btn.classList.remove('active'));
         });
 
         document.getElementById('killRate').addEventListener('input', (e) => {
             params.kill = parseFloat(e.target.value);
             document.getElementById('killValue').textContent = params.kill.toFixed(4);
-            updateParamMarker();
+            document.querySelectorAll('.phase-btn').forEach(btn => btn.classList.remove('active'));
         });
 
         document.getElementById('diffusionA').addEventListener('input', (e) => {
@@ -917,37 +920,37 @@
             initializeSimulation();
         });
 
-        // Presets
-        function applyPreset(presetName) {
-            const preset = presets[presetName];
-            if (!preset) return;
+        // Phase buttons
+        function applyPhase(phaseName) {
+            const phase = phases[phaseName];
+            if (!phase) return;
 
-            params.feed = preset.feed;
-            params.kill = preset.kill;
-            params.da = preset.da;
-            params.db = preset.db;
+            params.feed = phase.feed;
+            params.kill = phase.kill;
+            params.da = phase.da;
+            params.db = phase.db;
+            params.currentPhase = phaseName;
 
-            // Update UI
-            document.getElementById('feedRate').value = preset.feed;
-            document.getElementById('feedValue').textContent = preset.feed.toFixed(4);
-            document.getElementById('killRate').value = preset.kill;
-            document.getElementById('killValue').textContent = preset.kill.toFixed(4);
-            document.getElementById('diffusionA').value = preset.da;
-            document.getElementById('daValue').textContent = preset.da.toFixed(2);
-            document.getElementById('diffusionB').value = preset.db;
-            document.getElementById('dbValue').textContent = preset.db.toFixed(2);
+            document.getElementById('feedRate').value = phase.feed;
+            document.getElementById('feedValue').textContent = phase.feed.toFixed(4);
+            document.getElementById('killRate').value = phase.kill;
+            document.getElementById('killValue').textContent = phase.kill.toFixed(4);
+            document.getElementById('diffusionA').value = phase.da;
+            document.getElementById('daValue').textContent = phase.da.toFixed(2);
+            document.getElementById('diffusionB').value = phase.db;
+            document.getElementById('dbValue').textContent = phase.db.toFixed(2);
 
-            // Update active state
-            document.querySelectorAll('.preset-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.preset === presetName);
+            document.querySelectorAll('.phase-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.phase === phaseName);
             });
 
-            updateParamMarker();
-            initializeSimulation();
+            document.getElementById('currentPhase').textContent = phase.name;
         }
 
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+        document.querySelectorAll('.phase-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyPhase(btn.dataset.phase);
+            });
         });
 
         // Visualization mode
@@ -959,133 +962,18 @@
             });
         });
 
-        // Parameter space visualization
-        const paramCanvas = document.getElementById('paramCanvas');
-        const paramCtx = paramCanvas.getContext('2d');
-
-        function drawParamSpace() {
-            const width = paramCanvas.width = paramCanvas.offsetWidth * 2;
-            const height = paramCanvas.height = paramCanvas.offsetHeight * 2;
-
-            const imageData = paramCtx.createImageData(width, height);
-
-            // f ranges from 0.01 to 0.1, k ranges from 0.03 to 0.07
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const f = 0.01 + (x / width) * 0.09;
-                    const k = 0.03 + (1 - y / height) * 0.04;
-
-                    // Simplified phase classification
-                    const idx = (y * width + x) * 4;
-
-                    // Different regions create different colors
-                    let r, g, b;
-
-                    if (k < f + 0.025 && k > f + 0.005) {
-                        // Stripe region
-                        r = 100; g = 181; b = 246;
-                    } else if (k >= f + 0.025 && k < f + 0.035) {
-                        // Spot region
-                        r = 206; g = 147; b = 216;
-                    } else if (k >= f + 0.035) {
-                        // Decay region
-                        r = 40; g = 40; b = 60;
-                    } else {
-                        // Chaos/other
-                        r = 80; g = 120; b = 80;
-                    }
-
-                    imageData.data[idx] = r;
-                    imageData.data[idx + 1] = g;
-                    imageData.data[idx + 2] = b;
-                    imageData.data[idx + 3] = 255;
-                }
-            }
-
-            paramCtx.putImageData(imageData, 0, 0);
-        }
-
-        function updateParamMarker() {
-            const marker = document.getElementById('paramMarker');
-            const container = document.getElementById('paramSpace');
-
-            // f: 0.01 to 0.1 maps to 0-100%
-            // k: 0.03 to 0.07 maps to 100-0%
-            const xPercent = ((params.feed - 0.01) / 0.09) * 100;
-            const yPercent = (1 - (params.kill - 0.03) / 0.04) * 100;
-
-            marker.style.left = `${xPercent}%`;
-            marker.style.top = `${yPercent}%`;
-        }
-
-        document.getElementById('paramSpace').addEventListener('click', (e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const y = (e.clientY - rect.top) / rect.height;
-
-            // Map to f/k values
-            params.feed = 0.01 + x * 0.09;
-            params.kill = 0.03 + (1 - y) * 0.04;
-
-            // Update UI
-            document.getElementById('feedRate').value = params.feed;
-            document.getElementById('feedValue').textContent = params.feed.toFixed(4);
-            document.getElementById('killRate').value = params.kill;
-            document.getElementById('killValue').textContent = params.kill.toFixed(4);
-
-            updateParamMarker();
-
-            // Clear preset selection
-            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        // Info panel
+        document.getElementById('infoBtn').addEventListener('click', () => {
+            const panel = document.getElementById('infoPanel');
+            panel.classList.toggle('active');
         });
 
-        drawParamSpace();
-        updateParamMarker();
-
-        // Quest mode
-        function updateQuestUI() {
-            document.getElementById('questStepNum').textContent = currentQuestStep + 1;
-            document.getElementById('questTotalSteps').textContent = questSteps.length;
-            document.getElementById('questTitle').textContent = questSteps[currentQuestStep].title;
-            document.getElementById('questText').textContent = questSteps[currentQuestStep].text;
-
-            document.getElementById('questPrev').style.display = currentQuestStep === 0 ? 'none' : 'block';
-            document.getElementById('questNext').textContent =
-                currentQuestStep === questSteps.length - 1 ? 'Finish' : 'Next';
-
-            // Execute step action if present
-            if (questSteps[currentQuestStep].action) {
-                questSteps[currentQuestStep].action();
-            }
-        }
-
-        document.getElementById('questBtn').addEventListener('click', () => {
-            questActive = !questActive;
-            document.getElementById('questPanel').classList.toggle('active', questActive);
-            document.getElementById('questBtn').textContent = questActive ? 'Exit Quest Mode' : 'Start Quest Mode';
-
-            if (questActive) {
-                currentQuestStep = 0;
-                updateQuestUI();
-            }
-        });
-
-        document.getElementById('questPrev').addEventListener('click', () => {
-            if (currentQuestStep > 0) {
-                currentQuestStep--;
-                updateQuestUI();
-            }
-        });
-
-        document.getElementById('questNext').addEventListener('click', () => {
-            if (currentQuestStep < questSteps.length - 1) {
-                currentQuestStep++;
-                updateQuestUI();
-            } else {
-                // Finish quest
-                questActive = false;
-                document.getElementById('questPanel').classList.remove('active');
-                document.getElementById('questBtn').textContent = 'Start Quest Mode';
+        // Close info panel when clicking outside
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('infoPanel');
+            const btn = document.getElementById('infoBtn');
+            if (!panel.contains(e.target) && !btn.contains(e.target)) {
+                panel.classList.remove('active');
             }
         });
     </script>
