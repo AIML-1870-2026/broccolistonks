@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terrain Genesis - Turing Patterns (GPU Accelerated)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Turing Patterns Quest</title>
     <style>
         * {
             margin: 0;
@@ -13,841 +12,620 @@
         }
 
         body {
-            font-family: 'Courier New', monospace;
-            background: #f4f1e8;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        .container {
-            display: flex;
-            flex-wrap: wrap;
-            padding: 20px;
-            gap: 20px;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-
-        header {
-            width: 100%;
-            text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #5c4033 0%, #8b5a2b 100%);
-            color: #f4f1e8;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        header h1 {
-            font-size: 1.8rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        header p {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            margin-top: 5px;
-        }
-
-        .gpu-badge {
-            display: inline-block;
-            background: #ff6b35;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            margin-left: 10px;
-            vertical-align: middle;
-        }
-
-        .canvas-container {
-            flex: 1;
-            min-width: 300px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            padding: 15px;
-            border: 2px solid #5c4033;
-        }
-
-        .canvas-wrapper {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1;
-            background: #1a5276;
-            border-radius: 4px;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             overflow: hidden;
+            height: 100vh;
+            width: 100vw;
         }
 
-        #render-canvas, #three-container {
+        #canvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            cursor: crosshair;
         }
 
-        #three-container {
-            display: none;
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.9);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
         }
 
-        .view-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+        .control-panel h1 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, #64b5f6, #ce93d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .view-tab {
-            flex: 1;
-            padding: 8px 15px;
-            border: 2px solid #5c4033;
-            background: #f4f1e8;
-            color: #5c4033;
-            font-family: inherit;
-            font-size: 0.85rem;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.2s;
+        .control-panel .subtitle {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 15px;
         }
 
-        .view-tab.active {
-            background: #5c4033;
-            color: #f4f1e8;
+        .section {
+            margin-bottom: 20px;
         }
 
-        .view-tab:hover:not(.active) {
-            background: #e8e5dc;
-        }
-
-        .controls {
-            width: 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .panel {
-            background: rgba(255,255,255,0.95);
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            border: 2px solid #5c4033;
-        }
-
-        .panel h3 {
-            font-size: 0.9rem;
-            color: #5c4033;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #ddd;
+        .section-title {
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
+            color: #64b5f6;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(100, 200, 255, 0.2);
+            padding-bottom: 5px;
         }
 
-        .control-group {
+        .slider-group {
             margin-bottom: 12px;
         }
 
-        .control-group label {
+        .slider-label {
             display: flex;
             justify-content: space-between;
-            font-size: 0.75rem;
-            color: #666;
+            font-size: 0.85rem;
             margin-bottom: 4px;
         }
 
-        .control-group label span {
-            color: #5c4033;
-            font-weight: bold;
+        .slider-label span:last-child {
+            color: #64b5f6;
+            font-family: 'Courier New', monospace;
         }
 
         input[type="range"] {
             width: 100%;
             height: 6px;
-            border-radius: 3px;
-            background: #ddd;
-            outline: none;
             -webkit-appearance: none;
+            background: rgba(100, 200, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             width: 16px;
             height: 16px;
+            background: linear-gradient(135deg, #64b5f6, #ce93d8);
             border-radius: 50%;
-            background: #5c4033;
             cursor: pointer;
-            border: 2px solid #f4f1e8;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        .button-row {
-            display: flex;
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 8px 12px;
-            border: 2px solid #5c4033;
-            background: #f4f1e8;
-            color: #5c4033;
-            font-family: inherit;
-            font-size: 0.75rem;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            background: #5c4033;
-            color: #f4f1e8;
-        }
-
-        button.active {
-            background: #ff6b35;
-            border-color: #ff6b35;
-            color: white;
         }
 
         .preset-btn {
-            flex: 1;
-            min-width: calc(50% - 4px);
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            font-size: 0.7rem;
-        }
-
-        .stat {
-            background: #f4f1e8;
+            background: rgba(100, 200, 255, 0.1);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            color: #e0e0e0;
             padding: 8px;
-            border-radius: 4px;
-            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
         }
 
-        .stat-value {
-            font-size: 1rem;
-            font-weight: bold;
-            color: #5c4033;
+        .preset-btn:hover {
+            background: rgba(100, 200, 255, 0.2);
+            border-color: rgba(100, 200, 255, 0.5);
         }
 
-        .stat-label {
-            color: #888;
-            text-transform: uppercase;
-            font-size: 0.6rem;
+        .preset-btn.active {
+            background: rgba(100, 200, 255, 0.3);
+            border-color: #64b5f6;
         }
 
-        .parameter-space {
+        .viz-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .viz-btn {
+            flex: 1;
+            background: rgba(100, 200, 255, 0.1);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            color: #e0e0e0;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .viz-btn.active {
+            background: linear-gradient(135deg, rgba(100, 181, 246, 0.3), rgba(206, 147, 216, 0.3));
+            border-color: #64b5f6;
+        }
+
+        .action-btn {
             width: 100%;
-            aspect-ratio: 1.5;
-            background: linear-gradient(135deg, #1a5276 0%, #2e7d32 30%, #c9b458 60%, #8b5a2b 100%);
-            border-radius: 4px;
-            position: relative;
-            cursor: crosshair;
-            border: 1px solid #5c4033;
+            background: linear-gradient(135deg, #64b5f6, #ce93d8);
+            border: none;
+            color: #0a0a0f;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.2s;
         }
 
-        .parameter-marker {
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(100, 181, 246, 0.3);
+        }
+
+        .param-space {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 6px;
+            cursor: crosshair;
+            margin-top: 10px;
+        }
+
+        .param-space canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 5px;
+        }
+
+        .param-marker {
             position: absolute;
             width: 12px;
             height: 12px;
-            border: 2px solid #fff;
+            background: #fff;
+            border: 2px solid #64b5f6;
             border-radius: 50%;
-            background: #ff6b35;
             transform: translate(-50%, -50%);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             pointer-events: none;
+            box-shadow: 0 0 10px rgba(100, 181, 246, 0.5);
         }
 
-        .parameter-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.65rem;
-            color: #888;
-            margin-top: 4px;
+        .quest-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 20, 0.95);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px 30px;
+            max-width: 600px;
+            width: calc(100% - 40px);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: none;
         }
 
-        .color-scheme-select, .resolution-select {
-            width: 100%;
-            padding: 8px;
-            border: 2px solid #5c4033;
-            border-radius: 4px;
-            font-family: inherit;
+        .quest-panel.active {
+            display: block;
+        }
+
+        .quest-step {
             font-size: 0.8rem;
-            background: #f4f1e8;
-            color: #5c4033;
-            cursor: pointer;
-            margin-bottom: 8px;
+            color: #64b5f6;
+            margin-bottom: 5px;
         }
 
-        .toggle-row {
+        .quest-title {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .quest-text {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .quest-nav {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 0;
-        }
-
-        .toggle-row label {
-            font-size: 0.75rem;
-            color: #666;
-        }
-
-        .toggle {
-            position: relative;
-            width: 40px;
-            height: 20px;
-            background: #ddd;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .toggle.active {
-            background: #5c4033;
-        }
-
-        .toggle::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 16px;
-            height: 16px;
-            background: white;
-            border-radius: 50%;
-            transition: left 0.2s;
-        }
-
-        .toggle.active::after {
-            left: 22px;
-        }
-
-        .brush-preview {
-            display: flex;
-            align-items: center;
             gap: 10px;
-            margin-top: 8px;
+            justify-content: flex-end;
         }
 
-        .brush-circle {
-            width: 30px;
-            height: 30px;
-            border: 2px solid #5c4033;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .quest-nav button {
+            background: rgba(100, 200, 255, 0.2);
+            border: 1px solid rgba(100, 200, 255, 0.4);
+            color: #e0e0e0;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
         }
 
-        .brush-inner {
-            background: #ff6b35;
-            border-radius: 50%;
+        .quest-nav button:hover {
+            background: rgba(100, 200, 255, 0.3);
         }
 
-        @media (max-width: 900px) {
-            .container {
-                flex-direction: column;
+        .quest-nav button.primary {
+            background: linear-gradient(135deg, #64b5f6, #ce93d8);
+            border: none;
+            color: #0a0a0f;
+            font-weight: 600;
+        }
+
+        .stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 10, 20, 0.8);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+            color: #64b5f6;
+            z-index: 100;
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(10, 10, 20, 0.8);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 0.75rem;
+            color: #888;
+            z-index: 100;
+        }
+
+        .instructions strong {
+            color: #64b5f6;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                width: calc(100% - 40px);
+                max-height: 50vh;
             }
-            .controls {
-                width: 100%;
+
+            .stats, .instructions {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Terrain Genesis <span class="gpu-badge">GPU Accelerated</span></h1>
-            <p>Turing Pattern Reaction-Diffusion Simulation</p>
-        </header>
+    <canvas id="canvas"></canvas>
 
-        <div class="canvas-container">
-            <div class="view-tabs">
-                <button class="view-tab active" data-view="2d">2D Map</button>
-                <button class="view-tab" data-view="3d">3D Terrain</button>
+    <div class="control-panel">
+        <h1>Turing Patterns Quest</h1>
+        <p class="subtitle">Reaction-Diffusion Simulation</p>
+
+        <div class="section">
+            <div class="section-title">Parameters</div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Feed Rate (f)</span>
+                    <span id="feedValue">0.0550</span>
+                </div>
+                <input type="range" id="feedRate" min="0.01" max="0.1" step="0.0001" value="0.055">
             </div>
-            <div class="canvas-wrapper">
-                <canvas id="render-canvas"></canvas>
-                <div id="three-container"></div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Kill Rate (k)</span>
+                    <span id="killValue">0.0620</span>
+                </div>
+                <input type="range" id="killRate" min="0.03" max="0.07" step="0.0001" value="0.062">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Diffusion A (Da)</span>
+                    <span id="daValue">1.00</span>
+                </div>
+                <input type="range" id="diffusionA" min="0.1" max="2.0" step="0.01" value="1.0">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Diffusion B (Db)</span>
+                    <span id="dbValue">0.50</span>
+                </div>
+                <input type="range" id="diffusionB" min="0.1" max="1.0" step="0.01" value="0.5">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Brush Size</span>
+                    <span id="brushValue">20</span>
+                </div>
+                <input type="range" id="brushSize" min="5" max="50" step="1" value="20">
             </div>
         </div>
 
-        <div class="controls">
-            <div class="panel">
-                <h3>Instrumentation</h3>
-                <div class="stats">
-                    <div class="stat">
-                        <div class="stat-value" id="fps">0</div>
-                        <div class="stat-label">FPS</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value" id="iterations">0</div>
-                        <div class="stat-label">Iterations</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value" id="f-display">0.055</div>
-                        <div class="stat-label">Feed (F)</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value" id="k-display">0.062</div>
-                        <div class="stat-label">Kill (K)</div>
-                    </div>
-                </div>
+        <div class="section">
+            <div class="section-title">Presets</div>
+            <div class="presets-grid">
+                <button class="preset-btn" data-preset="coral">Brain Coral</button>
+                <button class="preset-btn" data-preset="mitosis">Mitosis</button>
+                <button class="preset-btn" data-preset="fingerprint">Fingerprints</button>
+                <button class="preset-btn" data-preset="spots">Leopard Spots</button>
+                <button class="preset-btn" data-preset="stripes">Tiger Stripes</button>
+                <button class="preset-btn" data-preset="maze">Maze</button>
+                <button class="preset-btn" data-preset="waves">Waves</button>
+                <button class="preset-btn" data-preset="worms">Worms</button>
             </div>
+        </div>
 
-            <div class="panel">
-                <h3>Parameter Space</h3>
-                <div class="parameter-space" id="param-space">
-                    <div class="parameter-marker" id="param-marker"></div>
-                </div>
-                <div class="parameter-labels">
-                    <span>F: 0.01</span>
-                    <span>Spots → Stripes → Waves</span>
-                    <span>F: 0.10</span>
-                </div>
+        <div class="section">
+            <div class="section-title">Visualization</div>
+            <div class="viz-toggle">
+                <button class="viz-btn active" data-viz="heatmap">Heatmap</button>
+                <button class="viz-btn" data-viz="grayscale">Grayscale</button>
             </div>
+        </div>
 
-            <div class="panel">
-                <h3>Simulation Controls</h3>
-                <div class="control-group">
-                    <label>Resolution</label>
-                    <select class="resolution-select" id="resolution">
-                        <option value="256">256 x 256</option>
-                        <option value="512" selected>512 x 512</option>
-                        <option value="1024">1024 x 1024</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>Feed Rate (F) <span id="f-value">0.055</span></label>
-                    <input type="range" id="feed-rate" min="0.01" max="0.1" step="0.001" value="0.055">
-                </div>
-                <div class="control-group">
-                    <label>Kill Rate (K) <span id="k-value">0.062</span></label>
-                    <input type="range" id="kill-rate" min="0.03" max="0.07" step="0.001" value="0.062">
-                </div>
-                <div class="control-group">
-                    <label>Diffusion A <span id="da-value">1.0</span></label>
-                    <input type="range" id="diffusion-a" min="0.5" max="1.5" step="0.1" value="1.0">
-                </div>
-                <div class="control-group">
-                    <label>Diffusion B <span id="db-value">0.5</span></label>
-                    <input type="range" id="diffusion-b" min="0.1" max="0.8" step="0.05" value="0.5">
-                </div>
-                <div class="control-group">
-                    <label>Simulation Speed <span id="speed-value">20</span></label>
-                    <input type="range" id="sim-speed" min="1" max="50" step="1" value="20">
-                </div>
+        <div class="section">
+            <div class="section-title">Parameter Space (f/k)</div>
+            <div class="param-space" id="paramSpace">
+                <canvas id="paramCanvas"></canvas>
+                <div class="param-marker" id="paramMarker"></div>
             </div>
+        </div>
 
-            <div class="panel">
-                <h3>Terrain Presets</h3>
-                <div class="button-row">
-                    <button class="preset-btn" data-f="0.034" data-k="0.059">Archipelago</button>
-                    <button class="preset-btn" data-f="0.046" data-k="0.063">Mountain Range</button>
-                    <button class="preset-btn" data-f="0.014" data-k="0.047">Coral Atolls</button>
-                    <button class="preset-btn" data-f="0.078" data-k="0.061">Badlands</button>
-                    <button class="preset-btn" data-f="0.026" data-k="0.051">Tectonic Chaos</button>
-                </div>
-            </div>
+        <button class="action-btn" id="resetBtn">Reset Simulation</button>
+        <button class="action-btn" id="questBtn" style="background: rgba(100, 200, 255, 0.2); color: #e0e0e0;">Start Quest Mode</button>
+    </div>
 
-            <div class="panel">
-                <h3>Playback</h3>
-                <div class="button-row">
-                    <button id="play-pause" class="active" style="flex: 1;">Pause</button>
-                    <button id="reset" style="flex: 1;">Reset</button>
-                    <button id="seed" style="flex: 1;">Seed</button>
-                </div>
-            </div>
+    <div class="stats" id="stats">
+        FPS: <span id="fps">60</span> | Resolution: <span id="resolution">512x512</span>
+    </div>
 
-            <div class="panel">
-                <h3>Brush Tool</h3>
-                <div class="control-group">
-                    <label>Brush Size <span id="brush-value">20</span>px</label>
-                    <input type="range" id="brush-size" min="5" max="50" step="1" value="20">
-                </div>
-                <div class="button-row">
-                    <button id="brush-add" class="active">Add Peaks</button>
-                    <button id="brush-remove">Dig Valleys</button>
-                </div>
-                <div class="brush-preview">
-                    <div class="brush-circle">
-                        <div class="brush-inner" id="brush-preview-inner"></div>
-                    </div>
-                    <span style="font-size: 0.7rem; color: #888;">Click & drag on canvas</span>
-                </div>
-            </div>
+    <div class="instructions">
+        <strong>Click & Drag</strong> to inject chemical B<br>
+        <strong>Scroll</strong> to adjust brush size
+    </div>
 
-            <div class="panel">
-                <h3>Rendering</h3>
-                <div class="control-group">
-                    <label>Color Scheme</label>
-                    <select class="color-scheme-select" id="color-scheme">
-                        <option value="0">Classic Topo</option>
-                        <option value="1">Bathymetric</option>
-                        <option value="2">Mars</option>
-                        <option value="3">Greyscale Relief</option>
-                        <option value="4">Heatmap</option>
-                    </select>
-                </div>
-                <div class="toggle-row">
-                    <label>Contour Lines</label>
-                    <div class="toggle active" id="toggle-contours"></div>
-                </div>
-                <div class="control-group">
-                    <label>Contour Interval <span id="contour-value">0.1</span></label>
-                    <input type="range" id="contour-interval" min="0.05" max="0.2" step="0.01" value="0.1">
-                </div>
-                <div class="toggle-row">
-                    <label>Hillshade</label>
-                    <div class="toggle active" id="toggle-hillshade"></div>
-                </div>
-                <div class="control-group">
-                    <label>Light Angle <span id="light-value">315</span>°</label>
-                    <input type="range" id="light-angle" min="0" max="360" step="5" value="315">
-                </div>
-                <div class="toggle-row">
-                    <label>Grid Overlay</label>
-                    <div class="toggle" id="toggle-grid"></div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <h3>3D Settings</h3>
-                <div class="control-group">
-                    <label>Vertical Exaggeration <span id="exag-value">3.0</span>x</label>
-                    <input type="range" id="exaggeration" min="1" max="10" step="0.5" value="3">
-                </div>
-                <div class="control-group">
-                    <label>Water Level <span id="water-value">0.3</span></label>
-                    <input type="range" id="water-level" min="0" max="0.8" step="0.05" value="0.3">
-                </div>
-                <div class="toggle-row">
-                    <label>Show Water</label>
-                    <div class="toggle active" id="toggle-water"></div>
-                </div>
-                <div class="toggle-row">
-                    <label>Wireframe</label>
-                    <div class="toggle" id="toggle-wireframe"></div>
-                </div>
-            </div>
+    <div class="quest-panel" id="questPanel">
+        <div class="quest-step">Step <span id="questStepNum">1</span> of <span id="questTotalSteps">6</span></div>
+        <div class="quest-title" id="questTitle">Welcome to Turing Patterns</div>
+        <div class="quest-text" id="questText">
+            In 1952, Alan Turing proposed a mathematical model explaining how patterns in nature emerge...
+        </div>
+        <div class="quest-nav">
+            <button id="questPrev">Previous</button>
+            <button id="questNext" class="primary">Next</button>
         </div>
     </div>
 
     <script>
-        // ============================================
-        // GPU-ACCELERATED GRAY-SCOTT SIMULATION
-        // ============================================
-
-        // State
-        const state = {
-            running: true,
-            iterations: 0,
-            f: 0.055,
-            k: 0.062,
-            dA: 1.0,
-            dB: 0.5,
-            speed: 20,
-            brushSize: 20,
-            brushMode: 'add',
-            colorScheme: 0,
-            showContours: true,
-            contourInterval: 0.1,
-            showHillshade: true,
-            lightAngle: 315,
-            showGrid: false,
-            viewMode: '2d',
-            exaggeration: 3.0,
-            waterLevel: 0.3,
-            showWater: true,
-            showWireframe: false,
-            resolution: 512
+        // Presets configuration
+        const presets = {
+            coral: { name: "Brain Coral", feed: 0.0545, kill: 0.062, da: 1.0, db: 0.5 },
+            mitosis: { name: "Mitosis", feed: 0.0367, kill: 0.0649, da: 1.0, db: 0.5 },
+            fingerprint: { name: "Fingerprints", feed: 0.055, kill: 0.062, da: 1.0, db: 0.5 },
+            spots: { name: "Leopard Spots", feed: 0.039, kill: 0.058, da: 1.0, db: 0.5 },
+            stripes: { name: "Tiger Stripes", feed: 0.025, kill: 0.055, da: 1.0, db: 0.5 },
+            maze: { name: "Maze", feed: 0.029, kill: 0.057, da: 1.0, db: 0.5 },
+            waves: { name: "Waves", feed: 0.014, kill: 0.054, da: 1.0, db: 0.5 },
+            worms: { name: "Worms", feed: 0.078, kill: 0.061, da: 1.0, db: 0.5 }
         };
 
-        // WebGL variables
-        let gl, simProgram, renderProgram;
-        let textures = [], framebuffers = [];
-        let currentTex = 0;
-        let quadVAO;
-        let brushProgram;
+        // Quest content
+        const questSteps = [
+            {
+                title: "Welcome to Turing Patterns",
+                text: "In 1952, Alan Turing—yes, the same Turing who cracked the Enigma code—proposed a mathematical model explaining how patterns in nature emerge. He showed that two simple chemicals interacting could spontaneously create stripes, spots, and complex shapes. Let's explore this remarkable discovery!"
+            },
+            {
+                title: "The Two Chemicals",
+                text: "Imagine two chemicals: A (the activator) and B (the inhibitor). Chemical A promotes its own production AND the production of B. But B suppresses A. They also spread out (diffuse) at different rates. This simple setup creates incredible complexity!",
+                action: () => applyPreset('coral')
+            },
+            {
+                title: "Feed and Kill Rates",
+                text: "The Feed rate (f) controls how fast we add chemical A to the system. The Kill rate (k) controls how fast chemical B is removed. These two parameters determine what patterns emerge. Try adjusting the sliders—even tiny changes create dramatically different patterns!",
+                action: () => { }
+            },
+            {
+                title: "Drawing Patterns",
+                text: "Click and drag on the canvas to inject chemical B. Watch how patterns grow from your disturbances! The reaction spreads outward, creating organic-looking structures. This is exactly how some biological patterns form—from local disturbances that propagate.",
+                action: () => { }
+            },
+            {
+                title: "The Parameter Space",
+                text: "The small 2D map in the control panel shows the 'phase diagram' of possible patterns. Different regions produce spots, stripes, or chaos. Click anywhere on it to teleport to that pattern type. Scientists call these 'Turing instabilities'.",
+                action: () => applyPreset('spots')
+            },
+            {
+                title: "Nature's Patterns",
+                text: "Turing's theory explains zebra stripes, leopard spots, coral formations, and even fingerprints! Try the different presets to see these natural patterns emerge. You're now witnessing one of biology's most elegant mathematical models. Happy exploring!",
+                action: () => applyPreset('fingerprint')
+            }
+        ];
 
-        // Three.js variables
-        let scene, camera, renderer, terrain, waterMesh;
-        let orbitRadius = 2, orbitTheta = 0.5, orbitPhi = 0.8;
-        let isDragging3D = false, lastMouseX, lastMouseY;
+        let currentQuestStep = 0;
+        let questActive = false;
 
-        const canvas = document.getElementById('render-canvas');
+        // WebGL Setup
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+
+        if (!gl) {
+            alert('WebGL is not supported in your browser');
+        }
+
+        // Simulation parameters
+        let params = {
+            feed: 0.055,
+            kill: 0.062,
+            da: 1.0,
+            db: 0.5,
+            brushSize: 20,
+            vizMode: 'heatmap'
+        };
+
+        let simWidth = 512;
+        let simHeight = 512;
+        let mouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
 
         // Vertex shader (shared)
-        const vertexShaderSource = `#version 300 es
-            in vec2 a_position;
-            out vec2 v_uv;
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            varying vec2 v_texCoord;
             void main() {
-                v_uv = a_position * 0.5 + 0.5;
+                v_texCoord = a_position * 0.5 + 0.5;
                 gl_Position = vec4(a_position, 0.0, 1.0);
             }
         `;
 
-        // Gray-Scott simulation fragment shader
-        const simulationShaderSource = `#version 300 es
+        // Simulation fragment shader (Gray-Scott model)
+        const simulationShaderSource = `
             precision highp float;
 
-            uniform sampler2D u_state;
+            uniform sampler2D u_texture;
             uniform vec2 u_resolution;
-            uniform float u_f;
-            uniform float u_k;
-            uniform float u_dA;
-            uniform float u_dB;
-
-            in vec2 v_uv;
-            out vec4 fragColor;
-
-            void main() {
-                vec2 texel = 1.0 / u_resolution;
-
-                vec2 state = texture(u_state, v_uv).rg;
-                float a = state.r;
-                float b = state.g;
-
-                // 9-point Laplacian for smoother diffusion
-                float lapA = 0.0;
-                float lapB = 0.0;
-
-                // Center weight
-                lapA -= a;
-                lapB -= b;
-
-                // Cardinal neighbors (weight 0.2 each)
-                vec2 n = texture(u_state, v_uv + vec2(0.0, texel.y)).rg;
-                vec2 s = texture(u_state, v_uv + vec2(0.0, -texel.y)).rg;
-                vec2 e = texture(u_state, v_uv + vec2(texel.x, 0.0)).rg;
-                vec2 w = texture(u_state, v_uv + vec2(-texel.x, 0.0)).rg;
-
-                lapA += 0.2 * (n.r + s.r + e.r + w.r);
-                lapB += 0.2 * (n.g + s.g + e.g + w.g);
-
-                // Diagonal neighbors (weight 0.05 each)
-                vec2 ne = texture(u_state, v_uv + vec2(texel.x, texel.y)).rg;
-                vec2 nw = texture(u_state, v_uv + vec2(-texel.x, texel.y)).rg;
-                vec2 se = texture(u_state, v_uv + vec2(texel.x, -texel.y)).rg;
-                vec2 sw = texture(u_state, v_uv + vec2(-texel.x, -texel.y)).rg;
-
-                lapA += 0.05 * (ne.r + nw.r + se.r + sw.r);
-                lapB += 0.05 * (ne.g + nw.g + se.g + sw.g);
-
-                float abb = a * b * b;
-
-                float newA = a + u_dA * lapA - abb + u_f * (1.0 - a);
-                float newB = b + u_dB * lapB + abb - (u_k + u_f) * b;
-
-                fragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
-            }
-        `;
-
-        // Brush shader for adding/removing chemicals
-        const brushShaderSource = `#version 300 es
-            precision highp float;
-
-            uniform sampler2D u_state;
-            uniform vec2 u_resolution;
-            uniform vec2 u_brushPos;
+            uniform float u_feed;
+            uniform float u_kill;
+            uniform float u_da;
+            uniform float u_db;
+            uniform float u_dt;
+            uniform vec2 u_mouse;
             uniform float u_brushSize;
-            uniform float u_brushMode; // 1.0 = add, -1.0 = remove
+            uniform float u_mouseDown;
 
-            in vec2 v_uv;
-            out vec4 fragColor;
-
-            void main() {
-                vec2 state = texture(u_state, v_uv).rg;
-
-                vec2 pixelPos = v_uv * u_resolution;
-                float dist = distance(pixelPos, u_brushPos);
-
-                if (dist < u_brushSize) {
-                    float strength = 1.0 - (dist / u_brushSize);
-                    strength = strength * strength * 0.5;
-
-                    if (u_brushMode > 0.0) {
-                        state.g = min(1.0, state.g + strength);
-                    } else {
-                        state.g = max(0.0, state.g - strength);
-                        state.r = min(1.0, state.r + strength * 0.5);
-                    }
-                }
-
-                fragColor = vec4(state, 0.0, 1.0);
-            }
-        `;
-
-        // Render shader with topographic coloring
-        const renderShaderSource = `#version 300 es
-            precision highp float;
-
-            uniform sampler2D u_state;
-            uniform vec2 u_resolution;
-            uniform int u_colorScheme;
-            uniform bool u_showContours;
-            uniform float u_contourInterval;
-            uniform bool u_showHillshade;
-            uniform float u_lightAngle;
-            uniform bool u_showGrid;
-
-            in vec2 v_uv;
-            out vec4 fragColor;
-
-            // Color scheme functions
-            vec3 classicTopo(float v) {
-                if (v < 0.2) return mix(vec3(0.102, 0.322, 0.463), vec3(0.180, 0.490, 0.196), v / 0.2);
-                if (v < 0.4) return mix(vec3(0.180, 0.490, 0.196), vec3(0.486, 0.702, 0.259), (v - 0.2) / 0.2);
-                if (v < 0.5) return mix(vec3(0.486, 0.702, 0.259), vec3(0.788, 0.706, 0.345), (v - 0.4) / 0.1);
-                if (v < 0.7) return mix(vec3(0.788, 0.706, 0.345), vec3(0.545, 0.353, 0.169), (v - 0.5) / 0.2);
-                if (v < 0.85) return mix(vec3(0.545, 0.353, 0.169), vec3(0.5, 0.5, 0.5), (v - 0.7) / 0.15);
-                return mix(vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), (v - 0.85) / 0.15);
-            }
-
-            vec3 bathymetric(float v) {
-                if (v < 0.2) return mix(vec3(0.0, 0.0, 0.314), vec3(0.0, 0.196, 0.588), v / 0.2);
-                if (v < 0.35) return mix(vec3(0.0, 0.196, 0.588), vec3(0.0, 0.588, 0.784), (v - 0.2) / 0.15);
-                if (v < 0.45) return mix(vec3(0.0, 0.588, 0.784), vec3(0.588, 0.863, 0.784), (v - 0.35) / 0.1);
-                if (v < 0.5) return mix(vec3(0.588, 0.863, 0.784), vec3(0.180, 0.490, 0.196), (v - 0.45) / 0.05);
-                if (v < 0.7) return mix(vec3(0.180, 0.490, 0.196), vec3(0.545, 0.353, 0.169), (v - 0.5) / 0.2);
-                if (v < 0.9) return mix(vec3(0.545, 0.353, 0.169), vec3(0.784, 0.784, 0.784), (v - 0.7) / 0.2);
-                return mix(vec3(0.784, 0.784, 0.784), vec3(1.0, 1.0, 1.0), (v - 0.9) / 0.1);
-            }
-
-            vec3 mars(float v) {
-                if (v < 0.3) return mix(vec3(0.235, 0.078, 0.039), vec3(0.588, 0.235, 0.118), v / 0.3);
-                if (v < 0.5) return mix(vec3(0.588, 0.235, 0.118), vec3(0.784, 0.392, 0.196), (v - 0.3) / 0.2);
-                if (v < 0.7) return mix(vec3(0.784, 0.392, 0.196), vec3(0.863, 0.588, 0.392), (v - 0.5) / 0.2);
-                if (v < 0.9) return mix(vec3(0.863, 0.588, 0.392), vec3(0.941, 0.784, 0.706), (v - 0.7) / 0.2);
-                return mix(vec3(0.941, 0.784, 0.706), vec3(1.0, 0.941, 0.902), (v - 0.9) / 0.1);
-            }
-
-            vec3 greyscale(float v) {
-                return vec3(v * 0.9 + 0.08);
-            }
-
-            vec3 heatmap(float v) {
-                if (v < 0.25) return mix(vec3(0.0, 0.0, 0.392), vec3(0.0, 0.392, 0.784), v / 0.25);
-                if (v < 0.5) return mix(vec3(0.0, 0.392, 0.784), vec3(1.0, 1.0, 1.0), (v - 0.25) / 0.25);
-                if (v < 0.75) return mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 0.588, 0.0), (v - 0.5) / 0.25);
-                return mix(vec3(1.0, 0.588, 0.0), vec3(0.784, 0.0, 0.0), (v - 0.75) / 0.25);
-            }
-
-            vec3 getColor(float v, int scheme) {
-                if (scheme == 0) return classicTopo(v);
-                if (scheme == 1) return bathymetric(v);
-                if (scheme == 2) return mars(v);
-                if (scheme == 3) return greyscale(v);
-                return heatmap(v);
-            }
+            varying vec2 v_texCoord;
 
             void main() {
                 vec2 texel = 1.0 / u_resolution;
-                float value = texture(u_state, v_uv).g;
 
-                vec3 color = getColor(value, u_colorScheme);
+                // Sample center and neighbors for Laplacian
+                vec4 center = texture2D(u_texture, v_texCoord);
+                vec4 left = texture2D(u_texture, v_texCoord + vec2(-texel.x, 0.0));
+                vec4 right = texture2D(u_texture, v_texCoord + vec2(texel.x, 0.0));
+                vec4 up = texture2D(u_texture, v_texCoord + vec2(0.0, texel.y));
+                vec4 down = texture2D(u_texture, v_texCoord + vec2(0.0, -texel.y));
 
-                // Hillshade
-                if (u_showHillshade) {
-                    float n = texture(u_state, v_uv + vec2(0.0, texel.y)).g;
-                    float s = texture(u_state, v_uv + vec2(0.0, -texel.y)).g;
-                    float e = texture(u_state, v_uv + vec2(texel.x, 0.0)).g;
-                    float w = texture(u_state, v_uv + vec2(-texel.x, 0.0)).g;
+                // Diagonal neighbors for better Laplacian
+                vec4 ul = texture2D(u_texture, v_texCoord + vec2(-texel.x, texel.y));
+                vec4 ur = texture2D(u_texture, v_texCoord + vec2(texel.x, texel.y));
+                vec4 dl = texture2D(u_texture, v_texCoord + vec2(-texel.x, -texel.y));
+                vec4 dr = texture2D(u_texture, v_texCoord + vec2(texel.x, -texel.y));
 
-                    float dzdx = (e - w) * 5.0;
-                    float dzdy = (n - s) * 5.0;
+                // 9-point Laplacian stencil
+                vec4 laplacian = (left + right + up + down) * 0.2
+                               + (ul + ur + dl + dr) * 0.05
+                               - center;
 
-                    float azimuth = radians(u_lightAngle);
-                    float altitude = radians(45.0);
+                float a = center.r;
+                float b = center.g;
 
-                    float slope = atan(sqrt(dzdx * dzdx + dzdy * dzdy));
-                    float aspect = atan(dzdy, -dzdx);
+                // Gray-Scott equations
+                float reaction = a * b * b;
+                float da = u_da * laplacian.r - reaction + u_feed * (1.0 - a);
+                float db = u_db * laplacian.g + reaction - (u_kill + u_feed) * b;
 
-                    float shade = cos(altitude) * sin(slope) * cos(azimuth - aspect) + sin(altitude) * cos(slope);
-                    shade = shade * 0.4 + 0.6;
-                    shade = clamp(shade, 0.3, 1.0);
+                float newA = a + da * u_dt;
+                float newB = b + db * u_dt;
 
-                    color *= shade;
-                }
-
-                // Contour lines
-                if (u_showContours) {
-                    float contourVal = mod(value, u_contourInterval);
-                    float lineWidth = 0.008;
-                    if (contourVal < lineWidth || contourVal > u_contourInterval - lineWidth) {
-                        color *= 0.4;
+                // Mouse interaction - inject chemical B
+                if (u_mouseDown > 0.5) {
+                    float dist = length(v_texCoord - u_mouse);
+                    float brushRadius = u_brushSize / u_resolution.x;
+                    if (dist < brushRadius) {
+                        float strength = 1.0 - smoothstep(0.0, brushRadius, dist);
+                        newB = mix(newB, 1.0, strength * 0.5);
                     }
                 }
 
-                // Grid overlay
-                if (u_showGrid) {
-                    float gridSize = 1.0 / 8.0;
-                    vec2 gridPos = mod(v_uv, gridSize);
-                    float lineWidth = 0.003;
-                    if (gridPos.x < lineWidth || gridPos.y < lineWidth) {
-                        color = mix(color, vec3(0.36, 0.25, 0.2), 0.3);
-                    }
-                }
-
-                fragColor = vec4(color, 1.0);
+                gl_FragColor = vec4(clamp(newA, 0.0, 1.0), clamp(newB, 0.0, 1.0), 0.0, 1.0);
             }
         `;
 
-        // Initialize WebGL
-        function initWebGL() {
-            gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
-            if (!gl) {
-                alert('WebGL 2 not supported');
-                return false;
+        // Display fragment shader
+        const displayShaderSource = `
+            precision highp float;
+
+            uniform sampler2D u_texture;
+            uniform int u_vizMode;
+
+            varying vec2 v_texCoord;
+
+            vec3 heatmap(float t) {
+                // Custom heatmap: deep blue -> cyan -> green -> yellow -> orange -> magenta
+                vec3 c;
+                if (t < 0.2) {
+                    c = mix(vec3(0.05, 0.05, 0.2), vec3(0.1, 0.4, 0.6), t * 5.0);
+                } else if (t < 0.4) {
+                    c = mix(vec3(0.1, 0.4, 0.6), vec3(0.2, 0.7, 0.5), (t - 0.2) * 5.0);
+                } else if (t < 0.6) {
+                    c = mix(vec3(0.2, 0.7, 0.5), vec3(0.8, 0.8, 0.3), (t - 0.4) * 5.0);
+                } else if (t < 0.8) {
+                    c = mix(vec3(0.8, 0.8, 0.3), vec3(0.9, 0.4, 0.3), (t - 0.6) * 5.0);
+                } else {
+                    c = mix(vec3(0.9, 0.4, 0.3), vec3(0.8, 0.3, 0.7), (t - 0.8) * 5.0);
+                }
+                return c;
             }
 
-            // Check for float texture support
-            const ext = gl.getExtension('EXT_color_buffer_float');
-            if (!ext) {
-                console.warn('EXT_color_buffer_float not supported, using HALF_FLOAT');
+            void main() {
+                vec4 data = texture2D(u_texture, v_texCoord);
+                float b = data.g;
+
+                vec3 color;
+                if (u_vizMode == 0) {
+                    // Heatmap mode
+                    color = heatmap(b);
+                } else {
+                    // Grayscale mode
+                    color = vec3(1.0 - b);
+                }
+
+                gl_FragColor = vec4(color, 1.0);
             }
+        `;
 
-            // Create shader programs
-            simProgram = createProgram(vertexShaderSource, simulationShaderSource);
-            renderProgram = createProgram(vertexShaderSource, renderShaderSource);
-            brushProgram = createProgram(vertexShaderSource, brushShaderSource);
-
-            // Create quad geometry
-            const quadVertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-            const quadBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
-
-            // Setup VAO
-            quadVAO = gl.createVertexArray();
-            gl.bindVertexArray(quadVAO);
-            gl.enableVertexAttribArray(0);
-            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-            initTextures();
-            return true;
-        }
-
-        function createShader(type, source) {
+        // Compile shader
+        function compileShader(source, type) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                 console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-                gl.deleteShader(shader);
                 return null;
             }
             return shader;
         }
 
+        // Create program
         function createProgram(vertexSource, fragmentSource) {
-            const vertexShader = createShader(gl.VERTEX_SHADER, vertexSource);
-            const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentSource);
+            const vertexShader = compileShader(vertexSource, gl.VERTEX_SHADER);
+            const fragmentShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
 
             const program = gl.createProgram();
             gl.attachShader(program, vertexShader);
@@ -858,624 +636,458 @@
                 console.error('Program link error:', gl.getProgramInfoLog(program));
                 return null;
             }
+
             return program;
         }
 
-        function initTextures() {
-            const size = state.resolution;
+        // Create programs
+        const simulationProgram = createProgram(vertexShaderSource, simulationShaderSource);
+        const displayProgram = createProgram(vertexShaderSource, displayShaderSource);
 
-            // Clean up old textures
-            textures.forEach(t => t && gl.deleteTexture(t));
-            framebuffers.forEach(f => f && gl.deleteFramebuffer(f));
-            textures = [];
-            framebuffers = [];
+        // Create vertex buffer (fullscreen quad)
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1, 1, -1, -1, 1,
+            -1, 1, 1, -1, 1, 1
+        ]), gl.STATIC_DRAW);
 
-            // Initialize with A=1, B=0
-            const initialData = new Float32Array(size * size * 4);
-            for (let i = 0; i < size * size; i++) {
-                initialData[i * 4] = 1.0;     // A
-                initialData[i * 4 + 1] = 0.0; // B
-                initialData[i * 4 + 2] = 0.0;
-                initialData[i * 4 + 3] = 1.0;
-            }
+        // Create framebuffers and textures for ping-pong
+        let textures = [];
+        let framebuffers = [];
 
-            // Create two textures for ping-pong
-            for (let i = 0; i < 2; i++) {
-                const texture = gl.createTexture();
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, initialData);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-                textures.push(texture);
+        function createTexture() {
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, simWidth, simHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            return texture;
+        }
 
+        function setupBuffers() {
+            // Clean up old textures/framebuffers
+            textures.forEach(t => gl.deleteTexture(t));
+            framebuffers.forEach(fb => gl.deleteFramebuffer(fb));
+
+            textures = [createTexture(), createTexture()];
+            framebuffers = textures.map(texture => {
                 const fb = gl.createFramebuffer();
                 gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-                framebuffers.push(fb);
-            }
+                return fb;
+            });
 
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            currentTex = 0;
-            state.iterations = 0;
-
-            // Seed initial pattern
-            seedPattern();
+            initializeSimulation();
         }
 
-        function seedPattern() {
-            const size = state.resolution;
-            const data = new Float32Array(size * size * 4);
+        function initializeSimulation() {
+            // Initialize with chemical A everywhere, B in center
+            const data = new Uint8Array(simWidth * simHeight * 4);
 
-            // Read current state
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentTex]);
-            gl.readPixels(0, 0, size, size, gl.RGBA, gl.FLOAT, data);
+            for (let y = 0; y < simHeight; y++) {
+                for (let x = 0; x < simWidth; x++) {
+                    const idx = (y * simWidth + x) * 4;
 
-            // Add seed points
-            const cx = size / 2;
-            const cy = size / 2;
-            const seedRadius = Math.floor(size / 12);
+                    // A = 1.0 everywhere, B = 0.0 everywhere except center
+                    data[idx] = 255;     // A
+                    data[idx + 1] = 0;   // B
+                    data[idx + 2] = 0;
+                    data[idx + 3] = 255;
 
-            for (let i = 0; i < 5; i++) {
-                const sx = cx + (Math.random() - 0.5) * size * 0.4;
-                const sy = cy + (Math.random() - 0.5) * size * 0.4;
+                    // Add some initial B in center region with noise
+                    const cx = simWidth / 2;
+                    const cy = simHeight / 2;
+                    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
 
-                for (let y = -seedRadius; y <= seedRadius; y++) {
-                    for (let x = -seedRadius; x <= seedRadius; x++) {
-                        if (x * x + y * y <= seedRadius * seedRadius) {
-                            const px = Math.floor(sx + x + size) % size;
-                            const py = Math.floor(sy + y + size) % size;
-                            const idx = (py * size + px) * 4;
-                            data[idx + 1] = 1.0; // Set B
-                        }
+                    if (dist < 20 && Math.random() > 0.3) {
+                        data[idx + 1] = 255;
+                    }
+
+                    // Add random seeds
+                    if (Math.random() < 0.001) {
+                        data[idx + 1] = 255;
                     }
                 }
             }
 
-            // Upload modified data
-            gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
-            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, size, size, gl.RGBA, gl.FLOAT, data);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            // Upload to both textures
+            textures.forEach(texture => {
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, simWidth, simHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+            });
         }
 
-        function resetSimulation() {
-            const size = state.resolution;
-            const data = new Float32Array(size * size * 4);
-            for (let i = 0; i < size * size; i++) {
-                data[i * 4] = 1.0;
-                data[i * 4 + 1] = 0.0;
-                data[i * 4 + 2] = 0.0;
-                data[i * 4 + 3] = 1.0;
-            }
-
-            gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
-            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, size, size, gl.RGBA, gl.FLOAT, data);
-            state.iterations = 0;
-        }
+        let currentBuffer = 0;
 
         function simulate() {
-            if (!state.running) return;
+            gl.useProgram(simulationProgram);
 
-            const size = state.resolution;
-            gl.viewport(0, 0, size, size);
-            gl.useProgram(simProgram);
-            gl.bindVertexArray(quadVAO);
+            // Bind input texture
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
+
+            // Bind output framebuffer
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[1 - currentBuffer]);
+            gl.viewport(0, 0, simWidth, simHeight);
 
             // Set uniforms
-            gl.uniform2f(gl.getUniformLocation(simProgram, 'u_resolution'), size, size);
-            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_f'), state.f);
-            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_k'), state.k);
-            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_dA'), state.dA);
-            gl.uniform1f(gl.getUniformLocation(simProgram, 'u_dB'), state.dB);
+            gl.uniform1i(gl.getUniformLocation(simulationProgram, 'u_texture'), 0);
+            gl.uniform2f(gl.getUniformLocation(simulationProgram, 'u_resolution'), simWidth, simHeight);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_feed'), params.feed);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_kill'), params.kill);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_da'), params.da);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_db'), params.db);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_dt'), 1.0);
+            gl.uniform2f(gl.getUniformLocation(simulationProgram, 'u_mouse'), mouseX, mouseY);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_brushSize'), params.brushSize);
+            gl.uniform1f(gl.getUniformLocation(simulationProgram, 'u_mouseDown'), mouseDown ? 1.0 : 0.0);
 
-            for (let i = 0; i < state.speed; i++) {
-                const readTex = currentTex;
-                const writeTex = 1 - currentTex;
+            // Set up vertex attribute
+            const posLoc = gl.getAttribLocation(simulationProgram, 'a_position');
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-                gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[writeTex]);
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, textures[readTex]);
-                gl.uniform1i(gl.getUniformLocation(simProgram, 'u_state'), 0);
+            // Draw
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-                currentTex = writeTex;
-                state.iterations++;
-            }
-
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            // Swap buffers
+            currentBuffer = 1 - currentBuffer;
         }
 
-        function applyBrush(canvasX, canvasY) {
-            const rect = canvas.getBoundingClientRect();
-            const size = state.resolution;
+        function display() {
+            gl.useProgram(displayProgram);
 
-            const x = (canvasX / rect.width) * size;
-            const y = (1 - canvasY / rect.height) * size;
-
-            gl.viewport(0, 0, size, size);
-            gl.useProgram(brushProgram);
-            gl.bindVertexArray(quadVAO);
-
-            const readTex = currentTex;
-            const writeTex = 1 - currentTex;
-
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[writeTex]);
+            // Bind simulation texture
             gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, textures[readTex]);
+            gl.bindTexture(gl.TEXTURE_2D, textures[currentBuffer]);
 
-            gl.uniform1i(gl.getUniformLocation(brushProgram, 'u_state'), 0);
-            gl.uniform2f(gl.getUniformLocation(brushProgram, 'u_resolution'), size, size);
-            gl.uniform2f(gl.getUniformLocation(brushProgram, 'u_brushPos'), x, y);
-            gl.uniform1f(gl.getUniformLocation(brushProgram, 'u_brushSize'), state.brushSize * (size / 512));
-            gl.uniform1f(gl.getUniformLocation(brushProgram, 'u_brushMode'), state.brushMode === 'add' ? 1.0 : -1.0);
-
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-            currentTex = writeTex;
+            // Draw to screen
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        }
-
-        function render2D() {
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
-
             gl.viewport(0, 0, canvas.width, canvas.height);
-            gl.useProgram(renderProgram);
-            gl.bindVertexArray(quadVAO);
 
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, textures[currentTex]);
-            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_state'), 0);
+            // Set uniforms
+            gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_texture'), 0);
+            gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_vizMode'), params.vizMode === 'heatmap' ? 0 : 1);
 
-            gl.uniform2f(gl.getUniformLocation(renderProgram, 'u_resolution'), state.resolution, state.resolution);
-            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_colorScheme'), state.colorScheme);
-            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_showContours'), state.showContours);
-            gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_contourInterval'), state.contourInterval);
-            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_showHillshade'), state.showHillshade);
-            gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_lightAngle'), state.lightAngle);
-            gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_showGrid'), state.showGrid);
+            // Set up vertex attribute
+            const posLoc = gl.getAttribLocation(displayProgram, 'a_position');
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            // Draw
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
 
-        // Three.js 3D visualization
-        function initThree() {
-            const container = document.getElementById('three-container');
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
 
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf4f1e8);
-
-            camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-            updateCameraPosition();
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            container.appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(1, 1, 1);
-            scene.add(directionalLight);
-
-            createTerrainMesh();
-            createWaterMesh();
-
-            // Mouse controls
-            container.addEventListener('mousedown', (e) => {
-                isDragging3D = true;
-                lastMouseX = e.clientX;
-                lastMouseY = e.clientY;
-            });
-
-            window.addEventListener('mouseup', () => isDragging3D = false);
-
-            window.addEventListener('mousemove', (e) => {
-                if (!isDragging3D) return;
-                orbitTheta -= (e.clientX - lastMouseX) * 0.01;
-                orbitPhi = Math.max(0.1, Math.min(Math.PI / 2, orbitPhi - (e.clientY - lastMouseY) * 0.01));
-                updateCameraPosition();
-                lastMouseX = e.clientX;
-                lastMouseY = e.clientY;
-            });
-
-            container.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                orbitRadius = Math.max(1, Math.min(5, orbitRadius + e.deltaY * 0.001));
-                updateCameraPosition();
-            });
-        }
-
-        function updateCameraPosition() {
-            camera.position.x = orbitRadius * Math.sin(orbitPhi) * Math.cos(orbitTheta);
-            camera.position.y = orbitRadius * Math.cos(orbitPhi);
-            camera.position.z = orbitRadius * Math.sin(orbitPhi) * Math.sin(orbitTheta);
-            camera.lookAt(0, 0, 0);
-        }
-
-        function createTerrainMesh() {
-            const segments = Math.min(state.resolution - 1, 255);
-            const geometry = new THREE.PlaneGeometry(2, 2, segments, segments);
-            const material = new THREE.MeshPhongMaterial({
-                vertexColors: true,
-                flatShading: false,
-                side: THREE.DoubleSide
-            });
-
-            terrain = new THREE.Mesh(geometry, material);
-            terrain.rotation.x = -Math.PI / 2;
-            scene.add(terrain);
-        }
-
-        function createWaterMesh() {
-            const geometry = new THREE.PlaneGeometry(2.2, 2.2);
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x1a5276,
-                transparent: true,
-                opacity: 0.7,
-                side: THREE.DoubleSide
-            });
-
-            waterMesh = new THREE.Mesh(geometry, material);
-            waterMesh.rotation.x = -Math.PI / 2;
-            scene.add(waterMesh);
-        }
-
-        function updateTerrainMesh() {
-            if (!terrain) return;
-
-            const size = state.resolution;
-            const data = new Float32Array(size * size * 4);
-
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentTex]);
-            gl.readPixels(0, 0, size, size, gl.RGBA, gl.FLOAT, data);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-            const positions = terrain.geometry.attributes.position.array;
-            const segments = Math.min(size - 1, 255);
-            const vertCount = (segments + 1) * (segments + 1);
-            const colors = new Float32Array(vertCount * 3);
-
-            const colorFuncs = [
-                classicTopoJS, bathymetricJS, marsJS, greyscaleJS, heatmapJS
-            ];
-            const colorFunc = colorFuncs[state.colorScheme];
-
-            for (let j = 0; j <= segments; j++) {
-                for (let i = 0; i <= segments; i++) {
-                    const vertIdx = j * (segments + 1) + i;
-
-                    const sx = Math.floor((i / segments) * (size - 1));
-                    const sy = Math.floor((j / segments) * (size - 1));
-                    const dataIdx = (sy * size + sx) * 4;
-
-                    const value = data[dataIdx + 1];
-                    positions[vertIdx * 3 + 2] = value * state.exaggeration * 0.3;
-
-                    const [r, g, b] = colorFunc(value);
-                    colors[vertIdx * 3] = r;
-                    colors[vertIdx * 3 + 1] = g;
-                    colors[vertIdx * 3 + 2] = b;
-                }
+            // Adjust simulation resolution based on screen
+            const minDim = Math.min(window.innerWidth, window.innerHeight);
+            if (minDim < 600) {
+                simWidth = simHeight = 256;
+            } else if (minDim < 1200) {
+                simWidth = simHeight = 512;
+            } else {
+                simWidth = simHeight = 768;
             }
 
-            terrain.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            terrain.geometry.attributes.position.needsUpdate = true;
-            terrain.geometry.computeVertexNormals();
-            terrain.material.wireframe = state.showWireframe;
-
-            waterMesh.visible = state.showWater;
-            waterMesh.position.y = state.waterLevel * state.exaggeration * 0.3;
+            document.getElementById('resolution').textContent = `${simWidth}x${simHeight}`;
+            setupBuffers();
         }
-
-        // JS color functions for 3D
-        function classicTopoJS(v) {
-            if (v < 0.2) return mix3([0.102, 0.322, 0.463], [0.180, 0.490, 0.196], v / 0.2);
-            if (v < 0.4) return mix3([0.180, 0.490, 0.196], [0.486, 0.702, 0.259], (v - 0.2) / 0.2);
-            if (v < 0.5) return mix3([0.486, 0.702, 0.259], [0.788, 0.706, 0.345], (v - 0.4) / 0.1);
-            if (v < 0.7) return mix3([0.788, 0.706, 0.345], [0.545, 0.353, 0.169], (v - 0.5) / 0.2);
-            if (v < 0.85) return mix3([0.545, 0.353, 0.169], [0.5, 0.5, 0.5], (v - 0.7) / 0.15);
-            return mix3([0.5, 0.5, 0.5], [1.0, 1.0, 1.0], (v - 0.85) / 0.15);
-        }
-
-        function bathymetricJS(v) {
-            if (v < 0.2) return mix3([0.0, 0.0, 0.314], [0.0, 0.196, 0.588], v / 0.2);
-            if (v < 0.35) return mix3([0.0, 0.196, 0.588], [0.0, 0.588, 0.784], (v - 0.2) / 0.15);
-            if (v < 0.45) return mix3([0.0, 0.588, 0.784], [0.588, 0.863, 0.784], (v - 0.35) / 0.1);
-            if (v < 0.5) return mix3([0.588, 0.863, 0.784], [0.180, 0.490, 0.196], (v - 0.45) / 0.05);
-            if (v < 0.7) return mix3([0.180, 0.490, 0.196], [0.545, 0.353, 0.169], (v - 0.5) / 0.2);
-            if (v < 0.9) return mix3([0.545, 0.353, 0.169], [0.784, 0.784, 0.784], (v - 0.7) / 0.2);
-            return mix3([0.784, 0.784, 0.784], [1.0, 1.0, 1.0], (v - 0.9) / 0.1);
-        }
-
-        function marsJS(v) {
-            if (v < 0.3) return mix3([0.235, 0.078, 0.039], [0.588, 0.235, 0.118], v / 0.3);
-            if (v < 0.5) return mix3([0.588, 0.235, 0.118], [0.784, 0.392, 0.196], (v - 0.3) / 0.2);
-            if (v < 0.7) return mix3([0.784, 0.392, 0.196], [0.863, 0.588, 0.392], (v - 0.5) / 0.2);
-            if (v < 0.9) return mix3([0.863, 0.588, 0.392], [0.941, 0.784, 0.706], (v - 0.7) / 0.2);
-            return mix3([0.941, 0.784, 0.706], [1.0, 0.941, 0.902], (v - 0.9) / 0.1);
-        }
-
-        function greyscaleJS(v) {
-            const c = v * 0.9 + 0.08;
-            return [c, c, c];
-        }
-
-        function heatmapJS(v) {
-            if (v < 0.25) return mix3([0.0, 0.0, 0.392], [0.0, 0.392, 0.784], v / 0.25);
-            if (v < 0.5) return mix3([0.0, 0.392, 0.784], [1.0, 1.0, 1.0], (v - 0.25) / 0.25);
-            if (v < 0.75) return mix3([1.0, 1.0, 1.0], [1.0, 0.588, 0.0], (v - 0.5) / 0.25);
-            return mix3([1.0, 0.588, 0.0], [0.784, 0.0, 0.0], (v - 0.75) / 0.25);
-        }
-
-        function mix3(a, b, t) {
-            t = Math.max(0, Math.min(1, t));
-            return [
-                a[0] + (b[0] - a[0]) * t,
-                a[1] + (b[1] - a[1]) * t,
-                a[2] + (b[2] - a[2]) * t
-            ];
-        }
-
-        function render3D() {
-            if (!renderer) return;
-            updateTerrainMesh();
-            renderer.render(scene, camera);
-        }
-
-        function resizeThreeRenderer() {
-            if (!renderer) return;
-            const container = document.getElementById('three-container');
-            const rect = container.getBoundingClientRect();
-            renderer.setSize(rect.width, rect.height);
-            camera.aspect = rect.width / rect.height;
-            camera.updateProjectionMatrix();
-        }
-
-        // FPS tracking
-        let lastTime = performance.now();
-        let frameCount = 0;
-        let fps = 0;
 
         function updateFPS() {
             frameCount++;
             const now = performance.now();
-            if (now - lastTime >= 1000) {
+            if (now - lastFrameTime >= 1000) {
                 fps = frameCount;
                 frameCount = 0;
-                lastTime = now;
+                lastFrameTime = now;
                 document.getElementById('fps').textContent = fps;
             }
         }
 
-        // Main loop
         function animate() {
-            simulate();
-
-            if (state.viewMode === '2d') {
-                render2D();
-            } else {
-                render3D();
+            // Run multiple simulation steps per frame for faster pattern development
+            for (let i = 0; i < 8; i++) {
+                simulate();
             }
-
+            display();
             updateFPS();
-            document.getElementById('iterations').textContent = state.iterations;
-
             requestAnimationFrame(animate);
         }
 
-        // UI Setup
-        function setupUI() {
-            // Sliders
-            const sliders = [
-                { id: 'feed-rate', state: 'f', display: 'f-value', displayId2: 'f-display', precision: 3 },
-                { id: 'kill-rate', state: 'k', display: 'k-value', displayId2: 'k-display', precision: 3 },
-                { id: 'diffusion-a', state: 'dA', display: 'da-value', precision: 1 },
-                { id: 'diffusion-b', state: 'dB', display: 'db-value', precision: 2 },
-                { id: 'sim-speed', state: 'speed', display: 'speed-value', precision: 0 },
-                { id: 'brush-size', state: 'brushSize', display: 'brush-value', precision: 0 },
-                { id: 'contour-interval', state: 'contourInterval', display: 'contour-value', precision: 2 },
-                { id: 'light-angle', state: 'lightAngle', display: 'light-value', precision: 0 },
-                { id: 'exaggeration', state: 'exaggeration', display: 'exag-value', precision: 1 },
-                { id: 'water-level', state: 'waterLevel', display: 'water-value', precision: 2 }
-            ];
+        // Initialize
+        resize();
+        window.addEventListener('resize', resize);
+        animate();
 
-            sliders.forEach(s => {
-                const slider = document.getElementById(s.id);
-                if (slider) {
-                    slider.addEventListener('input', (e) => {
-                        const val = parseFloat(e.target.value);
-                        state[s.state] = val;
-                        document.getElementById(s.display).textContent = val.toFixed(s.precision);
-                        if (s.displayId2) {
-                            document.getElementById(s.displayId2).textContent = val.toFixed(s.precision);
-                        }
-                        updateParamMarker();
-                        updateBrushPreview();
-                    });
-                }
-            });
+        // Mouse/touch interaction
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = 1.0 - (e.clientY - rect.top) / rect.height;
+            return { x, y };
+        }
 
-            // Resolution change
-            document.getElementById('resolution').addEventListener('change', (e) => {
-                state.resolution = parseInt(e.target.value);
-                initTextures();
-                if (terrain) {
-                    scene.remove(terrain);
-                    createTerrainMesh();
-                }
-            });
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            const pos = getMousePos(e);
+            mouseX = pos.x;
+            mouseY = pos.y;
+        });
 
-            // Presets
+        canvas.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const pos = getMousePos(e);
+                mouseX = pos.x;
+                mouseY = pos.y;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => mouseDown = false);
+        canvas.addEventListener('mouseleave', () => mouseDown = false);
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            mouseDown = true;
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            mouseX = pos.x;
+            mouseY = pos.y;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            mouseX = pos.x;
+            mouseY = pos.y;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => mouseDown = false);
+
+        // Scroll to adjust brush size
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const brushInput = document.getElementById('brushSize');
+            let newSize = params.brushSize - Math.sign(e.deltaY) * 2;
+            newSize = Math.max(5, Math.min(50, newSize));
+            params.brushSize = newSize;
+            brushInput.value = newSize;
+            document.getElementById('brushValue').textContent = newSize;
+        }, { passive: false });
+
+        // UI Controls
+        document.getElementById('feedRate').addEventListener('input', (e) => {
+            params.feed = parseFloat(e.target.value);
+            document.getElementById('feedValue').textContent = params.feed.toFixed(4);
+            updateParamMarker();
+        });
+
+        document.getElementById('killRate').addEventListener('input', (e) => {
+            params.kill = parseFloat(e.target.value);
+            document.getElementById('killValue').textContent = params.kill.toFixed(4);
+            updateParamMarker();
+        });
+
+        document.getElementById('diffusionA').addEventListener('input', (e) => {
+            params.da = parseFloat(e.target.value);
+            document.getElementById('daValue').textContent = params.da.toFixed(2);
+        });
+
+        document.getElementById('diffusionB').addEventListener('input', (e) => {
+            params.db = parseFloat(e.target.value);
+            document.getElementById('dbValue').textContent = params.db.toFixed(2);
+        });
+
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            params.brushSize = parseInt(e.target.value);
+            document.getElementById('brushValue').textContent = params.brushSize;
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            initializeSimulation();
+        });
+
+        // Presets
+        function applyPreset(presetName) {
+            const preset = presets[presetName];
+            if (!preset) return;
+
+            params.feed = preset.feed;
+            params.kill = preset.kill;
+            params.da = preset.da;
+            params.db = preset.db;
+
+            // Update UI
+            document.getElementById('feedRate').value = preset.feed;
+            document.getElementById('feedValue').textContent = preset.feed.toFixed(4);
+            document.getElementById('killRate').value = preset.kill;
+            document.getElementById('killValue').textContent = preset.kill.toFixed(4);
+            document.getElementById('diffusionA').value = preset.da;
+            document.getElementById('daValue').textContent = preset.da.toFixed(2);
+            document.getElementById('diffusionB').value = preset.db;
+            document.getElementById('dbValue').textContent = preset.db.toFixed(2);
+
+            // Update active state
             document.querySelectorAll('.preset-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    state.f = parseFloat(btn.dataset.f);
-                    state.k = parseFloat(btn.dataset.k);
-                    document.getElementById('feed-rate').value = state.f;
-                    document.getElementById('kill-rate').value = state.k;
-                    document.getElementById('f-value').textContent = state.f.toFixed(3);
-                    document.getElementById('k-value').textContent = state.k.toFixed(3);
-                    document.getElementById('f-display').textContent = state.f.toFixed(3);
-                    document.getElementById('k-display').textContent = state.k.toFixed(3);
-                    updateParamMarker();
-                });
+                btn.classList.toggle('active', btn.dataset.preset === presetName);
             });
 
-            // Play/Pause
-            document.getElementById('play-pause').addEventListener('click', (e) => {
-                state.running = !state.running;
-                e.target.textContent = state.running ? 'Pause' : 'Play';
-                e.target.classList.toggle('active', state.running);
+            updateParamMarker();
+            initializeSimulation();
+        }
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+        });
+
+        // Visualization mode
+        document.querySelectorAll('.viz-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                params.vizMode = btn.dataset.viz;
+                document.querySelectorAll('.viz-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
             });
+        });
 
-            // Reset
-            document.getElementById('reset').addEventListener('click', resetSimulation);
+        // Parameter space visualization
+        const paramCanvas = document.getElementById('paramCanvas');
+        const paramCtx = paramCanvas.getContext('2d');
 
-            // Seed
-            document.getElementById('seed').addEventListener('click', seedPattern);
+        function drawParamSpace() {
+            const width = paramCanvas.width = paramCanvas.offsetWidth * 2;
+            const height = paramCanvas.height = paramCanvas.offsetHeight * 2;
 
-            // Brush mode
-            document.getElementById('brush-add').addEventListener('click', (e) => {
-                state.brushMode = 'add';
-                e.target.classList.add('active');
-                document.getElementById('brush-remove').classList.remove('active');
-            });
+            const imageData = paramCtx.createImageData(width, height);
 
-            document.getElementById('brush-remove').addEventListener('click', (e) => {
-                state.brushMode = 'remove';
-                e.target.classList.add('active');
-                document.getElementById('brush-add').classList.remove('active');
-            });
+            // f ranges from 0.01 to 0.1, k ranges from 0.03 to 0.07
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const f = 0.01 + (x / width) * 0.09;
+                    const k = 0.03 + (1 - y / height) * 0.04;
 
-            // Color scheme
-            document.getElementById('color-scheme').addEventListener('change', (e) => {
-                state.colorScheme = parseInt(e.target.value);
-            });
+                    // Simplified phase classification
+                    const idx = (y * width + x) * 4;
 
-            // Toggles
-            const toggles = [
-                { id: 'toggle-contours', state: 'showContours' },
-                { id: 'toggle-hillshade', state: 'showHillshade' },
-                { id: 'toggle-grid', state: 'showGrid' },
-                { id: 'toggle-water', state: 'showWater' },
-                { id: 'toggle-wireframe', state: 'showWireframe' }
-            ];
+                    // Different regions create different colors
+                    let r, g, b;
 
-            toggles.forEach(t => {
-                document.getElementById(t.id).addEventListener('click', (e) => {
-                    state[t.state] = !state[t.state];
-                    e.target.classList.toggle('active', state[t.state]);
-                });
-            });
-
-            // View tabs
-            document.querySelectorAll('.view-tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    state.viewMode = tab.dataset.view;
-
-                    const renderCanvas = document.getElementById('render-canvas');
-                    const threeContainer = document.getElementById('three-container');
-
-                    if (state.viewMode === '2d') {
-                        renderCanvas.style.display = 'block';
-                        threeContainer.style.display = 'none';
+                    if (k < f + 0.025 && k > f + 0.005) {
+                        // Stripe region
+                        r = 100; g = 181; b = 246;
+                    } else if (k >= f + 0.025 && k < f + 0.035) {
+                        // Spot region
+                        r = 206; g = 147; b = 216;
+                    } else if (k >= f + 0.035) {
+                        // Decay region
+                        r = 40; g = 40; b = 60;
                     } else {
-                        renderCanvas.style.display = 'none';
-                        threeContainer.style.display = 'block';
-                        resizeThreeRenderer();
+                        // Chaos/other
+                        r = 80; g = 120; b = 80;
                     }
-                });
-            });
 
-            // Parameter space
-            const paramSpace = document.getElementById('param-space');
-            paramSpace.addEventListener('click', (e) => {
-                const rect = paramSpace.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const y = 1 - (e.clientY - rect.top) / rect.height;
+                    imageData.data[idx] = r;
+                    imageData.data[idx + 1] = g;
+                    imageData.data[idx + 2] = b;
+                    imageData.data[idx + 3] = 255;
+                }
+            }
 
-                state.f = 0.01 + x * 0.09;
-                state.k = 0.03 + y * 0.04;
-
-                document.getElementById('feed-rate').value = state.f;
-                document.getElementById('kill-rate').value = state.k;
-                document.getElementById('f-value').textContent = state.f.toFixed(3);
-                document.getElementById('k-value').textContent = state.k.toFixed(3);
-                document.getElementById('f-display').textContent = state.f.toFixed(3);
-                document.getElementById('k-display').textContent = state.k.toFixed(3);
-                updateParamMarker();
-            });
-
-            // Canvas interaction
-            let isDrawing = false;
-
-            canvas.addEventListener('mousedown', (e) => {
-                if (state.viewMode !== '2d') return;
-                isDrawing = true;
-                const rect = canvas.getBoundingClientRect();
-                applyBrush(e.clientX - rect.left, e.clientY - rect.top);
-            });
-
-            canvas.addEventListener('mousemove', (e) => {
-                if (!isDrawing || state.viewMode !== '2d') return;
-                const rect = canvas.getBoundingClientRect();
-                applyBrush(e.clientX - rect.left, e.clientY - rect.top);
-            });
-
-            window.addEventListener('mouseup', () => isDrawing = false);
-
-            // Touch support
-            canvas.addEventListener('touchstart', (e) => {
-                if (state.viewMode !== '2d') return;
-                e.preventDefault();
-                isDrawing = true;
-                const touch = e.touches[0];
-                const rect = canvas.getBoundingClientRect();
-                applyBrush(touch.clientX - rect.left, touch.clientY - rect.top);
-            });
-
-            canvas.addEventListener('touchmove', (e) => {
-                if (!isDrawing || state.viewMode !== '2d') return;
-                e.preventDefault();
-                const touch = e.touches[0];
-                const rect = canvas.getBoundingClientRect();
-                applyBrush(touch.clientX - rect.left, touch.clientY - rect.top);
-            });
-
-            canvas.addEventListener('touchend', () => isDrawing = false);
+            paramCtx.putImageData(imageData, 0, 0);
         }
 
         function updateParamMarker() {
-            const marker = document.getElementById('param-marker');
-            const x = ((state.f - 0.01) / 0.09) * 100;
-            const y = (1 - (state.k - 0.03) / 0.04) * 100;
-            marker.style.left = `${x}%`;
-            marker.style.top = `${y}%`;
+            const marker = document.getElementById('paramMarker');
+            const container = document.getElementById('paramSpace');
+
+            // f: 0.01 to 0.1 maps to 0-100%
+            // k: 0.03 to 0.07 maps to 100-0%
+            const xPercent = ((params.feed - 0.01) / 0.09) * 100;
+            const yPercent = (1 - (params.kill - 0.03) / 0.04) * 100;
+
+            marker.style.left = `${xPercent}%`;
+            marker.style.top = `${yPercent}%`;
         }
 
-        function updateBrushPreview() {
-            const preview = document.getElementById('brush-preview-inner');
-            const size = Math.max(4, state.brushSize * 0.6);
-            preview.style.width = `${size}px`;
-            preview.style.height = `${size}px`;
-        }
+        document.getElementById('paramSpace').addEventListener('click', (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
 
-        // Initialize
-        window.addEventListener('load', () => {
-            if (!initWebGL()) return;
-            setupUI();
+            // Map to f/k values
+            params.feed = 0.01 + x * 0.09;
+            params.kill = 0.03 + (1 - y) * 0.04;
+
+            // Update UI
+            document.getElementById('feedRate').value = params.feed;
+            document.getElementById('feedValue').textContent = params.feed.toFixed(4);
+            document.getElementById('killRate').value = params.kill;
+            document.getElementById('killValue').textContent = params.kill.toFixed(4);
+
             updateParamMarker();
-            updateBrushPreview();
-            initThree();
-            animate();
+
+            // Clear preset selection
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
         });
 
-        window.addEventListener('resize', resizeThreeRenderer);
+        drawParamSpace();
+        updateParamMarker();
+
+        // Quest mode
+        function updateQuestUI() {
+            document.getElementById('questStepNum').textContent = currentQuestStep + 1;
+            document.getElementById('questTotalSteps').textContent = questSteps.length;
+            document.getElementById('questTitle').textContent = questSteps[currentQuestStep].title;
+            document.getElementById('questText').textContent = questSteps[currentQuestStep].text;
+
+            document.getElementById('questPrev').style.display = currentQuestStep === 0 ? 'none' : 'block';
+            document.getElementById('questNext').textContent =
+                currentQuestStep === questSteps.length - 1 ? 'Finish' : 'Next';
+
+            // Execute step action if present
+            if (questSteps[currentQuestStep].action) {
+                questSteps[currentQuestStep].action();
+            }
+        }
+
+        document.getElementById('questBtn').addEventListener('click', () => {
+            questActive = !questActive;
+            document.getElementById('questPanel').classList.toggle('active', questActive);
+            document.getElementById('questBtn').textContent = questActive ? 'Exit Quest Mode' : 'Start Quest Mode';
+
+            if (questActive) {
+                currentQuestStep = 0;
+                updateQuestUI();
+            }
+        });
+
+        document.getElementById('questPrev').addEventListener('click', () => {
+            if (currentQuestStep > 0) {
+                currentQuestStep--;
+                updateQuestUI();
+            }
+        });
+
+        document.getElementById('questNext').addEventListener('click', () => {
+            if (currentQuestStep < questSteps.length - 1) {
+                currentQuestStep++;
+                updateQuestUI();
+            } else {
+                // Finish quest
+                questActive = false;
+                document.getElementById('questPanel').classList.remove('active');
+                document.getElementById('questBtn').textContent = 'Start Quest Mode';
+            }
+        });
     </script>
 </body>
 </html>
