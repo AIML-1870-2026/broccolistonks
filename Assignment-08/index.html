@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ghost in the Machine - Julia Set Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #ghost-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100vh;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header .subtitle {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 4px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #a78bfa;
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-group label span {
+            color: #60a5fa;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.15s ease;
+        }
+
+        select:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #a78bfa;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.active {
+            box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        footer {
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer .hint {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+        }
+
+        .worker-status {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.3);
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .worker-status.active {
+            color: #4ade80;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+                top: auto;
+                bottom: 0;
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .stats {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="ghost-canvas"></canvas>
+
+    <aside id="sidebar">
+        <header>
+            <h1>The Ghost in the Machine</h1>
+            <p class="subtitle">Julia Set Explorer</p>
+        </header>
+
+        <section class="stats">
+            <div class="stat-item">
+                <span class="stat-label">Iterations</span>
+                <span id="iteration-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Points/sec</span>
+                <span id="points-per-sec" class="stat-value">0</span>
+            </div>
+        </section>
+
+        <section class="controls">
+            <div class="control-group">
+                <label for="c-real">c.real: <span id="c-real-value">-0.70</span></label>
+                <input type="range" id="c-real" min="-2" max="2" step="0.01" value="-0.7">
+            </div>
+
+            <div class="control-group">
+                <label for="c-imag">c.imag: <span id="c-imag-value">0.27</span></label>
+                <input type="range" id="c-imag" min="-2" max="2" step="0.01" value="0.27">
+            </div>
+
+            <div class="control-group">
+                <label for="exposure">Exposure: <span id="exposure-value">1.0</span></label>
+                <input type="range" id="exposure" min="0.1" max="5" step="0.1" value="1.0">
+            </div>
+        </section>
+
+        <section class="controls">
+            <div class="control-group">
+                <label for="palette">Color Palette</label>
+                <select id="palette">
+                    <option value="nebula">Nebula</option>
+                    <option value="solar">Solar</option>
+                    <option value="ethereal">Ethereal</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="actions">
+            <button id="auto-morph" class="btn">Auto-Morph</button>
+            <button id="clear-restart" class="btn btn-secondary">Clear & Restart</button>
+            <button id="download-png" class="btn btn-secondary">Download PNG</button>
+        </section>
+
+        <footer>
+            <p class="hint">Click canvas to set center</p>
+            <p id="worker-status" class="worker-status"></p>
+        </footer>
+    </aside>
+
+    <script>
+        // ============================================================
+        // COLOR PALETTES MODULE
+        // ============================================================
+        const ColorPalettes = {
+            nebula: (t, exposure) => {
+                const e = Math.min(1, t * exposure);
+                const r = Math.floor(30 + 100 * Math.pow(e, 0.8));
+                const g = Math.floor(20 + 60 * Math.pow(e, 1.2));
+                const b = Math.floor(80 + 175 * Math.pow(e, 0.6));
+                return [r, g, b];
+            },
+            solar: (t, exposure) => {
+                const e = Math.min(1, t * exposure);
+                const r = Math.floor(255 * Math.pow(e, 0.5));
+                const g = Math.floor(100 * Math.pow(e, 0.8) + 50 * Math.pow(e, 1.5));
+                const b = Math.floor(30 * Math.pow(e, 1.5));
+                return [r, g, b];
+            },
+            ethereal: (t, exposure) => {
+                const e = Math.min(1, t * exposure);
+                const v = Math.floor(255 * Math.pow(e, 0.7));
+                return [v, v, v];
+            }
+        };
+
+        // ============================================================
+        // GHOST ENGINE MODULE (Main Thread Fallback)
+        // ============================================================
+        class GhostEngine {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.lightMap = new Uint32Array(width * height);
+                this.maxHits = 1;
+                this.totalIterations = 0;
+                this.c = { real: -0.7, imag: 0.27 };
+                this.center = { x: 0, y: 0 };
+                this.zoom = 1.5;
+            }
+
+            reset() {
+                this.lightMap.fill(0);
+                this.maxHits = 1;
+                this.totalIterations = 0;
+            }
+
+            resize(width, height) {
+                this.width = width;
+                this.height = height;
+                this.lightMap = new Uint32Array(width * height);
+                this.maxHits = 1;
+            }
+
+            complexSqrt(zReal, zImag) {
+                const r = Math.sqrt(zReal * zReal + zImag * zImag);
+                const theta = Math.atan2(zImag, zReal);
+                const sqrtR = Math.sqrt(r);
+                const halfTheta = theta / 2;
+                return {
+                    real: sqrtR * Math.cos(halfTheta),
+                    imag: sqrtR * Math.sin(halfTheta)
+                };
+            }
+
+            iterate(batchSize = 1000) {
+                const { width, height, lightMap, c, center, zoom } = this;
+                let localMax = this.maxHits;
+
+                for (let i = 0; i < batchSize; i++) {
+                    let zReal = (Math.random() - 0.5) * 4;
+                    let zImag = (Math.random() - 0.5) * 4;
+
+                    for (let j = 0; j < 100; j++) {
+                        const diffReal = zReal - c.real;
+                        const diffImag = zImag - c.imag;
+                        const sqrt = this.complexSqrt(diffReal, diffImag);
+
+                        if (Math.random() < 0.5) {
+                            zReal = sqrt.real;
+                            zImag = sqrt.imag;
+                        } else {
+                            zReal = -sqrt.real;
+                            zImag = -sqrt.imag;
+                        }
+
+                        if (j > 10) {
+                            const px = Math.floor((zReal - center.x) / zoom * width / 2 + width / 2);
+                            const py = Math.floor((zImag - center.y) / zoom * height / 2 + height / 2);
+
+                            if (px >= 0 && px < width && py >= 0 && py < height) {
+                                const idx = py * width + px;
+                                lightMap[idx]++;
+                                if (lightMap[idx] > localMax) {
+                                    localMax = lightMap[idx];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                this.maxHits = localMax;
+                this.totalIterations += batchSize;
+                return { lightMap: this.lightMap, maxHits: this.maxHits, totalIterations: this.totalIterations };
+            }
+        }
+
+        // ============================================================
+        // WEB WORKER CODE (Inline Blob)
+        // ============================================================
+        const workerCode = `
+            let width, height, lightMap, maxHits, c, center, zoom;
+
+            function complexSqrt(zReal, zImag) {
+                const r = Math.sqrt(zReal * zReal + zImag * zImag);
+                const theta = Math.atan2(zImag, zReal);
+                const sqrtR = Math.sqrt(r);
+                const halfTheta = theta / 2;
+                return {
+                    real: sqrtR * Math.cos(halfTheta),
+                    imag: sqrtR * Math.sin(halfTheta)
+                };
+            }
+
+            function iterate(batchSize) {
+                let localMax = maxHits;
+
+                for (let i = 0; i < batchSize; i++) {
+                    let zReal = (Math.random() - 0.5) * 4;
+                    let zImag = (Math.random() - 0.5) * 4;
+
+                    for (let j = 0; j < 100; j++) {
+                        const diffReal = zReal - c.real;
+                        const diffImag = zImag - c.imag;
+                        const sqrt = complexSqrt(diffReal, diffImag);
+
+                        if (Math.random() < 0.5) {
+                            zReal = sqrt.real;
+                            zImag = sqrt.imag;
+                        } else {
+                            zReal = -sqrt.real;
+                            zImag = -sqrt.imag;
+                        }
+
+                        if (j > 10) {
+                            const px = Math.floor((zReal - center.x) / zoom * width / 2 + width / 2);
+                            const py = Math.floor((zImag - center.y) / zoom * height / 2 + height / 2);
+
+                            if (px >= 0 && px < width && py >= 0 && py < height) {
+                                const idx = py * width + px;
+                                lightMap[idx]++;
+                                if (lightMap[idx] > localMax) {
+                                    localMax = lightMap[idx];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                maxHits = localMax;
+                return { maxHits };
+            }
+
+            self.onmessage = function(e) {
+                const { type, data } = e.data;
+
+                switch (type) {
+                    case 'init':
+                        width = data.width;
+                        height = data.height;
+                        lightMap = new Uint32Array(data.lightMap);
+                        maxHits = data.maxHits;
+                        c = data.c;
+                        center = data.center;
+                        zoom = data.zoom;
+                        break;
+
+                    case 'updateParams':
+                        if (data.c) c = data.c;
+                        if (data.center) center = data.center;
+                        if (data.zoom) zoom = data.zoom;
+                        break;
+
+                    case 'iterate':
+                        const result = iterate(data.batchSize);
+                        self.postMessage({
+                            type: 'result',
+                            lightMap: lightMap.buffer,
+                            maxHits: result.maxHits,
+                            batchSize: data.batchSize
+                        }, [lightMap.buffer]);
+                        lightMap = new Uint32Array(width * height);
+                        break;
+
+                    case 'reset':
+                        width = data.width;
+                        height = data.height;
+                        lightMap = new Uint32Array(width * height);
+                        maxHits = 1;
+                        break;
+                }
+            };
+        `;
+
+        // ============================================================
+        // RENDERER MODULE
+        // ============================================================
+        class Renderer {
+            constructor(canvas, engine) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.engine = engine;
+                this.imageData = null;
+                this.palette = 'nebula';
+                this.exposure = 1.0;
+            }
+
+            resize(width, height) {
+                this.canvas.width = width;
+                this.canvas.height = height;
+                this.imageData = this.ctx.createImageData(width, height);
+            }
+
+            render(lightMap, maxHits) {
+                const { width, height } = this.canvas;
+                const data = this.imageData.data;
+                const paletteFunc = ColorPalettes[this.palette];
+                const logMax = Math.log(maxHits + 1);
+
+                for (let i = 0; i < lightMap.length; i++) {
+                    const hits = lightMap[i];
+                    const t = hits > 0 ? Math.log(hits + 1) / logMax : 0;
+                    const [r, g, b] = paletteFunc(t, this.exposure);
+
+                    const idx = i * 4;
+                    data[idx] = r;
+                    data[idx + 1] = g;
+                    data[idx + 2] = b;
+                    data[idx + 3] = 255;
+                }
+
+                this.ctx.putImageData(this.imageData, 0, 0);
+            }
+        }
+
+        // ============================================================
+        // PERFORMANCE MONITOR
+        // ============================================================
+        class PerformanceMonitor {
+            constructor() {
+                this.frameTimes = [];
+                this.lastFrameTime = performance.now();
+                this.lowFpsCount = 0;
+                this.useWorker = false;
+                this.threshold = 20;
+            }
+
+            tick() {
+                const now = performance.now();
+                const delta = now - this.lastFrameTime;
+                this.lastFrameTime = now;
+
+                this.frameTimes.push(delta);
+                if (this.frameTimes.length > 30) {
+                    this.frameTimes.shift();
+                }
+
+                const avgFrameTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+                const fps = 1000 / avgFrameTime;
+
+                if (fps < this.threshold && !this.useWorker) {
+                    this.lowFpsCount++;
+                    if (this.lowFpsCount > 30) {
+                        this.useWorker = true;
+                        return { switchToWorker: true, fps };
+                    }
+                } else if (fps >= this.threshold) {
+                    this.lowFpsCount = 0;
+                }
+
+                return { switchToWorker: false, fps };
+            }
+        }
+
+        // ============================================================
+        // MAIN APPLICATION
+        // ============================================================
+        class GhostApp {
+            constructor() {
+                this.canvas = document.getElementById('ghost-canvas');
+                this.engine = null;
+                this.renderer = null;
+                this.worker = null;
+                this.perfMonitor = new PerformanceMonitor();
+                this.usingWorker = false;
+                this.running = true;
+                this.autoMorph = false;
+                this.morphPhase = 0;
+                this.lastStatsUpdate = 0;
+                this.pointsThisSecond = 0;
+                this.lastSecond = performance.now();
+
+                this.init();
+                this.bindEvents();
+                this.animate();
+            }
+
+            init() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                this.engine = new GhostEngine(width, height);
+                this.renderer = new Renderer(this.canvas, this.engine);
+                this.renderer.resize(width, height);
+
+                this.initWorker();
+            }
+
+            initWorker() {
+                try {
+                    const blob = new Blob([workerCode], { type: 'application/javascript' });
+                    const url = URL.createObjectURL(blob);
+                    this.worker = new Worker(url);
+
+                    this.worker.onmessage = (e) => {
+                        if (e.data.type === 'result') {
+                            const receivedMap = new Uint32Array(e.data.lightMap);
+                            for (let i = 0; i < receivedMap.length; i++) {
+                                this.engine.lightMap[i] += receivedMap[i];
+                                if (this.engine.lightMap[i] > this.engine.maxHits) {
+                                    this.engine.maxHits = this.engine.lightMap[i];
+                                }
+                            }
+                            this.engine.totalIterations += e.data.batchSize;
+                            this.pointsThisSecond += e.data.batchSize;
+
+                            if (this.usingWorker && this.running) {
+                                this.requestWorkerBatch();
+                            }
+                        }
+                    };
+
+                    this.worker.onerror = () => {
+                        this.usingWorker = false;
+                        this.updateWorkerStatus(false);
+                    };
+
+                    URL.revokeObjectURL(url);
+                } catch (err) {
+                    this.worker = null;
+                }
+            }
+
+            requestWorkerBatch() {
+                if (!this.worker) return;
+
+                this.worker.postMessage({
+                    type: 'init',
+                    data: {
+                        width: this.engine.width,
+                        height: this.engine.height,
+                        lightMap: new Uint32Array(this.engine.width * this.engine.height),
+                        maxHits: 1,
+                        c: this.engine.c,
+                        center: this.engine.center,
+                        zoom: this.engine.zoom
+                    }
+                });
+
+                this.worker.postMessage({
+                    type: 'iterate',
+                    data: { batchSize: 5000 }
+                });
+            }
+
+            switchToWorker() {
+                if (!this.worker || this.usingWorker) return;
+
+                this.usingWorker = true;
+                this.updateWorkerStatus(true);
+                this.requestWorkerBatch();
+            }
+
+            updateWorkerStatus(active) {
+                const status = document.getElementById('worker-status');
+                if (active) {
+                    status.textContent = 'Web Worker Active';
+                    status.classList.add('active');
+                } else {
+                    status.textContent = 'Main Thread';
+                    status.classList.remove('active');
+                }
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => this.handleResize());
+
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+                    const y = (e.clientY - rect.top) / rect.height * 2 - 1;
+                    this.engine.center.x = x * this.engine.zoom;
+                    this.engine.center.y = y * this.engine.zoom;
+                    this.reset();
+                });
+
+                const cRealSlider = document.getElementById('c-real');
+                const cImagSlider = document.getElementById('c-imag');
+                const exposureSlider = document.getElementById('exposure');
+                const paletteSelect = document.getElementById('palette');
+
+                cRealSlider.addEventListener('input', (e) => {
+                    this.engine.c.real = parseFloat(e.target.value);
+                    document.getElementById('c-real-value').textContent = this.engine.c.real.toFixed(2);
+                    this.reset();
+                });
+
+                cImagSlider.addEventListener('input', (e) => {
+                    this.engine.c.imag = parseFloat(e.target.value);
+                    document.getElementById('c-imag-value').textContent = this.engine.c.imag.toFixed(2);
+                    this.reset();
+                });
+
+                exposureSlider.addEventListener('input', (e) => {
+                    this.renderer.exposure = parseFloat(e.target.value);
+                    document.getElementById('exposure-value').textContent = this.renderer.exposure.toFixed(1);
+                });
+
+                paletteSelect.addEventListener('change', (e) => {
+                    this.renderer.palette = e.target.value;
+                });
+
+                document.getElementById('auto-morph').addEventListener('click', (e) => {
+                    this.autoMorph = !this.autoMorph;
+                    e.target.classList.toggle('active', this.autoMorph);
+                });
+
+                document.getElementById('clear-restart').addEventListener('click', () => {
+                    this.reset();
+                });
+
+                document.getElementById('download-png').addEventListener('click', () => {
+                    const link = document.createElement('a');
+                    link.download = 'ghost-julia.png';
+                    link.href = this.canvas.toDataURL('image/png');
+                    link.click();
+                });
+            }
+
+            handleResize() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                this.engine.resize(width, height);
+                this.renderer.resize(width, height);
+
+                if (this.worker) {
+                    this.worker.postMessage({
+                        type: 'reset',
+                        data: { width, height }
+                    });
+                }
+            }
+
+            reset() {
+                this.engine.reset();
+                if (this.worker) {
+                    this.worker.postMessage({
+                        type: 'reset',
+                        data: { width: this.engine.width, height: this.engine.height }
+                    });
+                    this.worker.postMessage({
+                        type: 'updateParams',
+                        data: {
+                            c: this.engine.c,
+                            center: this.engine.center,
+                            zoom: this.engine.zoom
+                        }
+                    });
+                }
+            }
+
+            updateAutoMorph() {
+                if (!this.autoMorph) return;
+
+                this.morphPhase += 0.002;
+                const newReal = -0.7 + 0.3 * Math.sin(this.morphPhase);
+                const newImag = 0.27 + 0.2 * Math.cos(this.morphPhase * 1.3);
+
+                this.engine.c.real = newReal;
+                this.engine.c.imag = newImag;
+
+                document.getElementById('c-real').value = newReal;
+                document.getElementById('c-imag').value = newImag;
+                document.getElementById('c-real-value').textContent = newReal.toFixed(2);
+                document.getElementById('c-imag-value').textContent = newImag.toFixed(2);
+
+                this.reset();
+            }
+
+            updateStats() {
+                const now = performance.now();
+                if (now - this.lastSecond >= 1000) {
+                    document.getElementById('points-per-sec').textContent =
+                        this.formatNumber(this.pointsThisSecond);
+                    this.pointsThisSecond = 0;
+                    this.lastSecond = now;
+                }
+
+                document.getElementById('iteration-count').textContent =
+                    this.formatNumber(this.engine.totalIterations);
+            }
+
+            formatNumber(n) {
+                if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+                if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+                if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+                return n.toString();
+            }
+
+            animate() {
+                if (!this.running) return;
+
+                const perf = this.perfMonitor.tick();
+
+                if (perf.switchToWorker && this.worker && !this.usingWorker) {
+                    this.switchToWorker();
+                }
+
+                if (!this.usingWorker) {
+                    const result = this.engine.iterate(2000);
+                    this.pointsThisSecond += 2000;
+                }
+
+                this.updateAutoMorph();
+                this.renderer.render(this.engine.lightMap, this.engine.maxHits);
+                this.updateStats();
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // Start the application
+        window.addEventListener('DOMContentLoaded', () => {
+            new GhostApp();
+        });
+    </script>
+</body>
+</html>
