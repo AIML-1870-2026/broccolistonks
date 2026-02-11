@@ -517,8 +517,8 @@
                     case 'init':
                         width = data.width;
                         height = data.height;
-                        lightMap = new Uint32Array(data.lightMap);
-                        maxHits = data.maxHits;
+                        lightMap = new Uint32Array(width * height);
+                        maxHits = 1;
                         c = data.c;
                         center = data.center;
                         zoom = data.zoom;
@@ -527,18 +527,21 @@
                     case 'updateParams':
                         if (data.c) c = data.c;
                         if (data.center) center = data.center;
-                        if (data.zoom) zoom = data.zoom;
+                        if (data.zoom !== undefined) zoom = data.zoom;
                         break;
 
                     case 'iterate':
                         const result = iterate(data.batchSize);
+                        // Send the lightMap and clear for next batch
                         self.postMessage({
                             type: 'result',
                             lightMap: lightMap.buffer,
                             maxHits: result.maxHits,
                             batchSize: data.batchSize
                         }, [lightMap.buffer]);
+                        // Create new lightMap for next iteration
                         lightMap = new Uint32Array(width * height);
+                        maxHits = 1;
                         break;
 
                     case 'reset':
@@ -743,6 +746,7 @@
 
                     // Start worker immediately for better performance
                     this.usingWorker = true;
+                    this.initWorkerState();
                     this.requestWorkerBatch();
                 } catch (err) {
                     this.worker = null;
@@ -753,21 +757,23 @@
                 if (!this.worker) return;
 
                 this.worker.postMessage({
+                    type: 'iterate',
+                    data: { batchSize: 5000 }
+                });
+            }
+
+            initWorkerState() {
+                if (!this.worker) return;
+
+                this.worker.postMessage({
                     type: 'init',
                     data: {
                         width: this.engine.width,
                         height: this.engine.height,
-                        lightMap: new Uint32Array(this.engine.width * this.engine.height),
-                        maxHits: 1,
                         c: this.engine.c,
                         center: this.engine.center,
                         zoom: this.engine.zoom
                     }
-                });
-
-                this.worker.postMessage({
-                    type: 'iterate',
-                    data: { batchSize: 5000 }
                 });
             }
 
@@ -909,6 +915,14 @@
                         type: 'reset',
                         data: { width, height }
                     });
+                    this.worker.postMessage({
+                        type: 'updateParams',
+                        data: {
+                            c: this.engine.c,
+                            center: this.engine.center,
+                            zoom: this.engine.zoom
+                        }
+                    });
                 }
             }
 
@@ -927,6 +941,7 @@
                             zoom: this.engine.zoom
                         }
                     });
+                    this.requestWorkerBatch();
                 }
             }
 
