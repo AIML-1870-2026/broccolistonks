@@ -25,6 +25,7 @@
             width: 100vw;
             height: 100vh;
             cursor: crosshair;
+            touch-action: none;
         }
 
         #sidebar {
@@ -290,9 +291,9 @@
             <div class="control-group">
                 <label for="palette">Color Palette</label>
                 <select id="palette">
-                    <option value="nebula">Nebula</option>
-                    <option value="solar">Solar</option>
-                    <option value="ethereal">Ethereal</option>
+                    <option value="0">Nebula</option>
+                    <option value="1">Solar</option>
+                    <option value="2">Ethereal</option>
                 </select>
             </div>
         </section>
@@ -304,39 +305,76 @@
         </section>
 
         <footer>
-            <p class="hint">Click canvas to set center</p>
-            <p id="worker-status" class="worker-status"></p>
+            <p class="hint">Scroll/pinch to zoom, click to center</p>
+            <p id="worker-status" class="worker-status">GPU Accelerated</p>
         </footer>
     </aside>
 
     <script>
         // ============================================================
-        // COLOR PALETTES MODULE
+        // WEBGL SHADERS
         // ============================================================
-        const ColorPalettes = {
-            nebula: (t, exposure) => {
-                const e = Math.min(1, t * exposure);
-                const r = Math.floor(30 + 100 * Math.pow(e, 0.8));
-                const g = Math.floor(20 + 60 * Math.pow(e, 1.2));
-                const b = Math.floor(80 + 175 * Math.pow(e, 0.6));
-                return [r, g, b];
-            },
-            solar: (t, exposure) => {
-                const e = Math.min(1, t * exposure);
-                const r = Math.floor(255 * Math.pow(e, 0.5));
-                const g = Math.floor(100 * Math.pow(e, 0.8) + 50 * Math.pow(e, 1.5));
-                const b = Math.floor(30 * Math.pow(e, 1.5));
-                return [r, g, b];
-            },
-            ethereal: (t, exposure) => {
-                const e = Math.min(1, t * exposure);
-                const v = Math.floor(255 * Math.pow(e, 0.7));
-                return [v, v, v];
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            attribute vec2 a_texCoord;
+            varying vec2 v_texCoord;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+                v_texCoord = a_texCoord;
             }
-        };
+        `;
+
+        const fragmentShaderSource = `
+            precision highp float;
+            varying vec2 v_texCoord;
+            uniform sampler2D u_lightMap;
+            uniform float u_maxHits;
+            uniform float u_exposure;
+            uniform int u_palette;
+
+            vec3 nebula(float t) {
+                float e = min(1.0, t);
+                float r = 0.118 + 0.392 * pow(e, 0.8);
+                float g = 0.078 + 0.235 * pow(e, 1.2);
+                float b = 0.314 + 0.686 * pow(e, 0.6);
+                return vec3(r, g, b);
+            }
+
+            vec3 solar(float t) {
+                float e = min(1.0, t);
+                float r = pow(e, 0.5);
+                float g = 0.392 * pow(e, 0.8) + 0.196 * pow(e, 1.5);
+                float b = 0.118 * pow(e, 1.5);
+                return vec3(r, g, b);
+            }
+
+            vec3 ethereal(float t) {
+                float e = min(1.0, t);
+                float v = pow(e, 0.7);
+                return vec3(v, v, v);
+            }
+
+            void main() {
+                vec4 sample = texture2D(u_lightMap, v_texCoord);
+                float hits = sample.r * 65535.0 + sample.g * 255.0;
+                float logMax = log(u_maxHits + 1.0);
+                float t = hits > 0.0 ? (log(hits + 1.0) / logMax) * u_exposure : 0.0;
+
+                vec3 color;
+                if (u_palette == 0) {
+                    color = nebula(t);
+                } else if (u_palette == 1) {
+                    color = solar(t);
+                } else {
+                    color = ethereal(t);
+                }
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
 
         // ============================================================
-        // GHOST ENGINE MODULE (Main Thread Fallback)
+        // GHOST ENGINE MODULE
         // ============================================================
         class GhostEngine {
             constructor(width, height) {
@@ -412,7 +450,6 @@
 
                 this.maxHits = localMax;
                 this.totalIterations += batchSize;
-                return { lightMap: this.lightMap, maxHits: this.maxHits, totalIterations: this.totalIterations };
             }
         }
 
@@ -514,82 +551,120 @@
         `;
 
         // ============================================================
-        // RENDERER MODULE
+        // WEBGL RENDERER MODULE
         // ============================================================
-        class Renderer {
-            constructor(canvas, engine) {
+        class WebGLRenderer {
+            constructor(canvas) {
                 this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
-                this.engine = engine;
-                this.imageData = null;
-                this.palette = 'nebula';
+                this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                this.palette = 0;
                 this.exposure = 1.0;
+                this.texture = null;
+                this.textureData = null;
+
+                if (!this.gl) {
+                    throw new Error('WebGL not supported');
+                }
+
+                this.initShaders();
+                this.initBuffers();
+                this.initTexture();
+            }
+
+            initShaders() {
+                const gl = this.gl;
+
+                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vertexShader, vertexShaderSource);
+                gl.compileShader(vertexShader);
+
+                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fragmentShader, fragmentShaderSource);
+                gl.compileShader(fragmentShader);
+
+                this.program = gl.createProgram();
+                gl.attachShader(this.program, vertexShader);
+                gl.attachShader(this.program, fragmentShader);
+                gl.linkProgram(this.program);
+                gl.useProgram(this.program);
+
+                this.locations = {
+                    position: gl.getAttribLocation(this.program, 'a_position'),
+                    texCoord: gl.getAttribLocation(this.program, 'a_texCoord'),
+                    lightMap: gl.getUniformLocation(this.program, 'u_lightMap'),
+                    maxHits: gl.getUniformLocation(this.program, 'u_maxHits'),
+                    exposure: gl.getUniformLocation(this.program, 'u_exposure'),
+                    palette: gl.getUniformLocation(this.program, 'u_palette')
+                };
+            }
+
+            initBuffers() {
+                const gl = this.gl;
+
+                const positions = new Float32Array([
+                    -1, -1,  1, -1,  -1, 1,
+                    -1,  1,  1, -1,   1, 1
+                ]);
+
+                const texCoords = new Float32Array([
+                    0, 1,  1, 1,  0, 0,
+                    0, 0,  1, 1,  1, 0
+                ]);
+
+                const positionBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+                gl.enableVertexAttribArray(this.locations.position);
+                gl.vertexAttribPointer(this.locations.position, 2, gl.FLOAT, false, 0, 0);
+
+                const texCoordBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+                gl.enableVertexAttribArray(this.locations.texCoord);
+                gl.vertexAttribPointer(this.locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+            }
+
+            initTexture() {
+                const gl = this.gl;
+                this.texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, this.texture);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             }
 
             resize(width, height) {
                 this.canvas.width = width;
                 this.canvas.height = height;
-                this.imageData = this.ctx.createImageData(width, height);
+                this.gl.viewport(0, 0, width, height);
+                this.textureData = new Uint8Array(width * height * 4);
             }
 
             render(lightMap, maxHits) {
-                const { width, height } = this.canvas;
-                const data = this.imageData.data;
-                const paletteFunc = ColorPalettes[this.palette];
-                const logMax = Math.log(maxHits + 1);
+                const gl = this.gl;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
 
+                // Convert Uint32Array to RGBA texture (encode hits in RG channels)
                 for (let i = 0; i < lightMap.length; i++) {
                     const hits = lightMap[i];
-                    const t = hits > 0 ? Math.log(hits + 1) / logMax : 0;
-                    const [r, g, b] = paletteFunc(t, this.exposure);
-
                     const idx = i * 4;
-                    data[idx] = r;
-                    data[idx + 1] = g;
-                    data[idx + 2] = b;
-                    data[idx + 3] = 255;
+                    this.textureData[idx] = (hits >> 8) & 0xFF;     // High byte
+                    this.textureData[idx + 1] = hits & 0xFF;        // Low byte
+                    this.textureData[idx + 2] = 0;
+                    this.textureData[idx + 3] = 255;
                 }
 
-                this.ctx.putImageData(this.imageData, 0, 0);
-            }
-        }
+                gl.bindTexture(gl.TEXTURE_2D, this.texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.textureData);
 
-        // ============================================================
-        // PERFORMANCE MONITOR
-        // ============================================================
-        class PerformanceMonitor {
-            constructor() {
-                this.frameTimes = [];
-                this.lastFrameTime = performance.now();
-                this.lowFpsCount = 0;
-                this.useWorker = false;
-                this.threshold = 20;
-            }
+                gl.uniform1i(this.locations.lightMap, 0);
+                gl.uniform1f(this.locations.maxHits, maxHits);
+                gl.uniform1f(this.locations.exposure, this.exposure);
+                gl.uniform1i(this.locations.palette, this.palette);
 
-            tick() {
-                const now = performance.now();
-                const delta = now - this.lastFrameTime;
-                this.lastFrameTime = now;
-
-                this.frameTimes.push(delta);
-                if (this.frameTimes.length > 30) {
-                    this.frameTimes.shift();
-                }
-
-                const avgFrameTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
-                const fps = 1000 / avgFrameTime;
-
-                if (fps < this.threshold && !this.useWorker) {
-                    this.lowFpsCount++;
-                    if (this.lowFpsCount > 30) {
-                        this.useWorker = true;
-                        return { switchToWorker: true, fps };
-                    }
-                } else if (fps >= this.threshold) {
-                    this.lowFpsCount = 0;
-                }
-
-                return { switchToWorker: false, fps };
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
         }
 
@@ -602,12 +677,10 @@
                 this.engine = null;
                 this.renderer = null;
                 this.worker = null;
-                this.perfMonitor = new PerformanceMonitor();
                 this.usingWorker = false;
                 this.running = true;
                 this.autoMorph = false;
                 this.morphPhase = 0;
-                this.lastStatsUpdate = 0;
                 this.pointsThisSecond = 0;
                 this.lastSecond = performance.now();
 
@@ -621,8 +694,16 @@
                 const height = window.innerHeight;
 
                 this.engine = new GhostEngine(width, height);
-                this.renderer = new Renderer(this.canvas, this.engine);
-                this.renderer.resize(width, height);
+
+                try {
+                    this.renderer = new WebGLRenderer(this.canvas);
+                    this.renderer.resize(width, height);
+                    document.getElementById('worker-status').textContent = 'GPU Accelerated';
+                    document.getElementById('worker-status').classList.add('active');
+                } catch (e) {
+                    console.error('WebGL failed, falling back to 2D canvas');
+                    document.getElementById('worker-status').textContent = 'CPU Rendering';
+                }
 
                 this.initWorker();
             }
@@ -653,10 +734,13 @@
 
                     this.worker.onerror = () => {
                         this.usingWorker = false;
-                        this.updateWorkerStatus(false);
                     };
 
                     URL.revokeObjectURL(url);
+
+                    // Start worker immediately for better performance
+                    this.usingWorker = true;
+                    this.requestWorkerBatch();
                 } catch (err) {
                     this.worker = null;
                 }
@@ -684,35 +768,82 @@
                 });
             }
 
-            switchToWorker() {
-                if (!this.worker || this.usingWorker) return;
-
-                this.usingWorker = true;
-                this.updateWorkerStatus(true);
-                this.requestWorkerBatch();
-            }
-
-            updateWorkerStatus(active) {
-                const status = document.getElementById('worker-status');
-                if (active) {
-                    status.textContent = 'Web Worker Active';
-                    status.classList.add('active');
-                } else {
-                    status.textContent = 'Main Thread';
-                    status.classList.remove('active');
-                }
-            }
-
             bindEvents() {
                 window.addEventListener('resize', () => this.handleResize());
 
+                // Click to center
                 this.canvas.addEventListener('click', (e) => {
                     const rect = this.canvas.getBoundingClientRect();
                     const x = (e.clientX - rect.left) / rect.width * 2 - 1;
                     const y = (e.clientY - rect.top) / rect.height * 2 - 1;
-                    this.engine.center.x = x * this.engine.zoom;
-                    this.engine.center.y = y * this.engine.zoom;
+                    this.engine.center.x += x * this.engine.zoom;
+                    this.engine.center.y += y * this.engine.zoom;
                     this.reset();
+                });
+
+                // Two-finger scroll / pinch to zoom
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+
+                    // Get mouse position for zoom centering
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mouseX = (e.clientX - rect.left) / rect.width * 2 - 1;
+                    const mouseY = (e.clientY - rect.top) / rect.height * 2 - 1;
+
+                    // Determine zoom factor (ctrlKey indicates pinch gesture on trackpad)
+                    let zoomFactor;
+                    if (e.ctrlKey) {
+                        // Pinch zoom - deltaY is the pinch amount
+                        zoomFactor = 1 + e.deltaY * 0.01;
+                    } else {
+                        // Regular scroll zoom
+                        zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+                    }
+
+                    // Calculate new zoom
+                    const oldZoom = this.engine.zoom;
+                    const newZoom = Math.max(0.1, Math.min(10, oldZoom * zoomFactor));
+
+                    // Adjust center to zoom towards mouse position
+                    const worldX = mouseX * oldZoom + this.engine.center.x;
+                    const worldY = mouseY * oldZoom + this.engine.center.y;
+
+                    this.engine.center.x = worldX - mouseX * newZoom;
+                    this.engine.center.y = worldY - mouseY * newZoom;
+                    this.engine.zoom = newZoom;
+
+                    this.reset();
+                }, { passive: false });
+
+                // Touch pinch zoom for mobile
+                let lastTouchDistance = 0;
+                this.canvas.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 2) {
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                    }
+                });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 2) {
+                        e.preventDefault();
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (lastTouchDistance > 0) {
+                            const zoomFactor = lastTouchDistance / distance;
+                            this.engine.zoom = Math.max(0.1, Math.min(10, this.engine.zoom * zoomFactor));
+                            this.reset();
+                        }
+
+                        lastTouchDistance = distance;
+                    }
+                }, { passive: false });
+
+                this.canvas.addEventListener('touchend', () => {
+                    lastTouchDistance = 0;
                 });
 
                 const cRealSlider = document.getElementById('c-real');
@@ -738,7 +869,7 @@
                 });
 
                 paletteSelect.addEventListener('change', (e) => {
-                    this.renderer.palette = e.target.value;
+                    this.renderer.palette = parseInt(e.target.value);
                 });
 
                 document.getElementById('auto-morph').addEventListener('click', (e) => {
@@ -831,14 +962,9 @@
             animate() {
                 if (!this.running) return;
 
-                const perf = this.perfMonitor.tick();
-
-                if (perf.switchToWorker && this.worker && !this.usingWorker) {
-                    this.switchToWorker();
-                }
-
+                // Also run on main thread for extra throughput
                 if (!this.usingWorker) {
-                    const result = this.engine.iterate(2000);
+                    this.engine.iterate(2000);
                     this.pointsThisSecond += 2000;
                 }
 
