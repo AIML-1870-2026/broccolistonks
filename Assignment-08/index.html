@@ -300,6 +300,7 @@
 
         <section class="actions">
             <button id="auto-morph" class="btn">Auto-Morph</button>
+            <button id="auto-zoom" class="btn">Auto-Zoom</button>
             <button id="clear-restart" class="btn btn-secondary">Clear & Restart</button>
             <button id="download-png" class="btn btn-secondary">Download PNG</button>
         </section>
@@ -680,6 +681,8 @@
                 this.usingWorker = false;
                 this.running = true;
                 this.autoMorph = false;
+                this.autoZoom = false;
+                this.zoomDirection = -1; // -1 = zoom in, 1 = zoom out
                 this.morphPhase = 0;
                 this.pointsThisSecond = 0;
                 this.lastSecond = performance.now();
@@ -800,9 +803,9 @@
                         zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
                     }
 
-                    // Calculate new zoom
+                    // Calculate new zoom (no limits)
                     const oldZoom = this.engine.zoom;
-                    const newZoom = Math.max(0.1, Math.min(10, oldZoom * zoomFactor));
+                    const newZoom = Math.max(0.0001, oldZoom * zoomFactor);
 
                     // Adjust center to zoom towards mouse position
                     const worldX = mouseX * oldZoom + this.engine.center.x;
@@ -812,7 +815,8 @@
                     this.engine.center.y = worldY - mouseY * newZoom;
                     this.engine.zoom = newZoom;
 
-                    this.reset();
+                    // Update worker params without resetting iterations
+                    this.updateWorkerParams();
                 }, { passive: false });
 
                 // Touch pinch zoom for mobile
@@ -834,8 +838,8 @@
 
                         if (lastTouchDistance > 0) {
                             const zoomFactor = lastTouchDistance / distance;
-                            this.engine.zoom = Math.max(0.1, Math.min(10, this.engine.zoom * zoomFactor));
-                            this.reset();
+                            this.engine.zoom = Math.max(0.0001, this.engine.zoom * zoomFactor);
+                            this.updateWorkerParams();
                         }
 
                         lastTouchDistance = distance;
@@ -875,6 +879,11 @@
                 document.getElementById('auto-morph').addEventListener('click', (e) => {
                     this.autoMorph = !this.autoMorph;
                     e.target.classList.toggle('active', this.autoMorph);
+                });
+
+                document.getElementById('auto-zoom').addEventListener('click', (e) => {
+                    this.autoZoom = !this.autoZoom;
+                    e.target.classList.toggle('active', this.autoZoom);
                 });
 
                 document.getElementById('clear-restart').addEventListener('click', () => {
@@ -919,6 +928,36 @@
                         }
                     });
                 }
+            }
+
+            updateWorkerParams() {
+                if (this.worker) {
+                    this.worker.postMessage({
+                        type: 'updateParams',
+                        data: {
+                            c: this.engine.c,
+                            center: this.engine.center,
+                            zoom: this.engine.zoom
+                        }
+                    });
+                }
+            }
+
+            updateAutoZoom() {
+                if (!this.autoZoom) return;
+
+                // Smoothly zoom in and out
+                const zoomSpeed = 0.005;
+                this.engine.zoom *= (1 + zoomSpeed * this.zoomDirection);
+
+                // Reverse direction at limits
+                if (this.engine.zoom < 0.01) {
+                    this.zoomDirection = 1;
+                } else if (this.engine.zoom > 5) {
+                    this.zoomDirection = -1;
+                }
+
+                this.updateWorkerParams();
             }
 
             updateAutoMorph() {
@@ -969,6 +1008,7 @@
                 }
 
                 this.updateAutoMorph();
+                this.updateAutoZoom();
                 this.renderer.render(this.engine.lightMap, this.engine.maxHits);
                 this.updateStats();
 
