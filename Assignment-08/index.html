@@ -332,6 +332,8 @@
             uniform float u_maxHits;
             uniform float u_exposure;
             uniform int u_palette;
+            uniform float u_viewZoom;
+            uniform vec2 u_viewCenter;
 
             vec3 nebula(float t) {
                 float e = min(1.0, t);
@@ -356,7 +358,16 @@
             }
 
             void main() {
-                vec4 sample = texture2D(u_lightMap, v_texCoord);
+                // Apply view zoom and pan to texture coordinates
+                vec2 uv = (v_texCoord - 0.5) * u_viewZoom + 0.5 + u_viewCenter;
+
+                // Check bounds
+                if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    return;
+                }
+
+                vec4 sample = texture2D(u_lightMap, uv);
                 float hits = sample.r * 65535.0 + sample.g * 255.0;
                 float logMax = log(u_maxHits + 1.0);
                 float t = hits > 0.0 ? (log(hits + 1.0) / logMax) * u_exposure : 0.0;
@@ -563,6 +574,8 @@
                 this.gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
                 this.palette = 0;
                 this.exposure = 1.0;
+                this.viewZoom = 1.0;
+                this.viewCenter = { x: 0, y: 0 };
                 this.texture = null;
                 this.textureData = null;
 
@@ -598,7 +611,9 @@
                     lightMap: gl.getUniformLocation(this.program, 'u_lightMap'),
                     maxHits: gl.getUniformLocation(this.program, 'u_maxHits'),
                     exposure: gl.getUniformLocation(this.program, 'u_exposure'),
-                    palette: gl.getUniformLocation(this.program, 'u_palette')
+                    palette: gl.getUniformLocation(this.program, 'u_palette'),
+                    viewZoom: gl.getUniformLocation(this.program, 'u_viewZoom'),
+                    viewCenter: gl.getUniformLocation(this.program, 'u_viewCenter')
                 };
             }
 
@@ -667,6 +682,8 @@
                 gl.uniform1f(this.locations.maxHits, maxHits);
                 gl.uniform1f(this.locations.exposure, this.exposure);
                 gl.uniform1i(this.locations.palette, this.palette);
+                gl.uniform1f(this.locations.viewZoom, this.viewZoom);
+                gl.uniform2f(this.locations.viewCenter, this.viewCenter.x, this.viewCenter.y);
 
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
@@ -790,39 +807,31 @@
                     this.reset();
                 });
 
-                // Two-finger scroll / pinch to zoom
+                // Two-finger scroll / pinch to zoom (view only, no iteration reset)
                 this.canvas.addEventListener('wheel', (e) => {
                     e.preventDefault();
 
                     // Get mouse position for zoom centering
                     const rect = this.canvas.getBoundingClientRect();
-                    const mouseX = (e.clientX - rect.left) / rect.width * 2 - 1;
-                    const mouseY = (e.clientY - rect.top) / rect.height * 2 - 1;
+                    const mouseX = (e.clientX - rect.left) / rect.width - 0.5;
+                    const mouseY = (e.clientY - rect.top) / rect.height - 0.5;
 
                     // Determine zoom factor (ctrlKey indicates pinch gesture on trackpad)
                     let zoomFactor;
                     if (e.ctrlKey) {
-                        // Pinch zoom - deltaY is the pinch amount
                         zoomFactor = 1 + e.deltaY * 0.01;
                     } else {
-                        // Regular scroll zoom
                         zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
                     }
 
-                    // Calculate new zoom (no limits)
-                    const oldZoom = this.engine.zoom;
-                    const newZoom = Math.max(0.0001, oldZoom * zoomFactor);
+                    // Update view zoom (affects display only)
+                    const oldZoom = this.renderer.viewZoom;
+                    const newZoom = Math.max(0.01, oldZoom * zoomFactor);
 
-                    // Adjust center to zoom towards mouse position
-                    const worldX = mouseX * oldZoom + this.engine.center.x;
-                    const worldY = mouseY * oldZoom + this.engine.center.y;
-
-                    this.engine.center.x = worldX - mouseX * newZoom;
-                    this.engine.center.y = worldY - mouseY * newZoom;
-                    this.engine.zoom = newZoom;
-
-                    // Update worker params without resetting iterations
-                    this.updateWorkerParams();
+                    // Adjust view center to zoom towards mouse position
+                    this.renderer.viewCenter.x += mouseX * (oldZoom - newZoom);
+                    this.renderer.viewCenter.y -= mouseY * (oldZoom - newZoom);
+                    this.renderer.viewZoom = newZoom;
                 }, { passive: false });
 
                 // Touch pinch zoom for mobile
@@ -844,8 +853,7 @@
 
                         if (lastTouchDistance > 0) {
                             const zoomFactor = lastTouchDistance / distance;
-                            this.engine.zoom = Math.max(0.0001, this.engine.zoom * zoomFactor);
-                            this.updateWorkerParams();
+                            this.renderer.viewZoom = Math.max(0.01, this.renderer.viewZoom * zoomFactor);
                         }
 
                         lastTouchDistance = distance;
@@ -961,18 +969,16 @@
             updateAutoZoom() {
                 if (!this.autoZoom) return;
 
-                // Smoothly zoom in and out
+                // Smoothly zoom in and out (view zoom only)
                 const zoomSpeed = 0.005;
-                this.engine.zoom *= (1 + zoomSpeed * this.zoomDirection);
+                this.renderer.viewZoom *= (1 + zoomSpeed * this.zoomDirection);
 
                 // Reverse direction at limits
-                if (this.engine.zoom < 0.01) {
+                if (this.renderer.viewZoom < 0.1) {
                     this.zoomDirection = 1;
-                } else if (this.engine.zoom > 5) {
+                } else if (this.renderer.viewZoom > 3) {
                     this.zoomDirection = -1;
                 }
-
-                this.updateWorkerParams();
             }
 
             updateAutoMorph() {
@@ -990,7 +996,8 @@
                 document.getElementById('c-real-value').textContent = newReal.toFixed(2);
                 document.getElementById('c-imag-value').textContent = newImag.toFixed(2);
 
-                this.reset();
+                // Update worker with new c values, don't reset
+                this.updateWorkerParams();
             }
 
             updateStats() {
