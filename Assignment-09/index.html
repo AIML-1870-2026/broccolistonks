@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
@@ -74,119 +74,187 @@
             box-shadow: 0 4px 15px rgba(74, 144, 217, 0.4);
         }
 
-        /* Main Layout */
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-
-        @media (max-width: 700px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Input Section */
-        .input-section {
+        /* Neuron Visualization Section */
+        .neuron-viz-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
-            padding: 24px;
+            padding: 30px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .input-section h2 {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            color: #4a90d9;
-        }
-
-        .input-group {
-            margin-bottom: 24px;
-        }
-
-        .input-label {
+        .neuron-diagram {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            position: relative;
+            min-height: 400px;
         }
 
-        .input-label .weight {
-            color: #888;
-            font-size: 0.85rem;
+        /* Input Nodes Column */
+        .input-nodes {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            z-index: 2;
         }
 
-        .input-value {
-            color: #ffd700;
+        .input-node {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .input-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 0.75rem;
             font-weight: bold;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(58, 123, 213, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
         }
 
-        input[type="range"] {
+        .input-circle .value {
+            font-size: 1.1rem;
+        }
+
+        .input-circle .label {
+            font-size: 0.6rem;
+            opacity: 0.9;
+            text-align: center;
+            max-width: 60px;
+            line-height: 1.1;
+        }
+
+        .input-slider-group {
+            display: flex;
+            flex-direction: column;
+            width: 120px;
+        }
+
+        .input-slider-group label {
+            font-size: 0.75rem;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .input-slider-group input[type="range"] {
             width: 100%;
-            height: 8px;
-            border-radius: 4px;
+            height: 6px;
+            border-radius: 3px;
             background: #333;
             outline: none;
             -webkit-appearance: none;
         }
 
-        input[type="range"]::-webkit-slider-thumb {
+        .input-slider-group input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: linear-gradient(135deg, #4a90d9, #63b3ed);
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(74, 144, 217, 0.5);
-            transition: transform 0.2s;
+            box-shadow: 0 2px 6px rgba(74, 144, 217, 0.5);
         }
 
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-        }
-
-        input[type="range"]::-moz-range-thumb {
-            width: 22px;
-            height: 22px;
+        .input-slider-group input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: linear-gradient(135deg, #4a90d9, #63b3ed);
             cursor: pointer;
             border: none;
         }
 
-        /* Neuron Visual Section */
-        .neuron-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 24px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* Connection Lines SVG */
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            stroke: #4a90d9;
+            stroke-width: 3;
+            fill: none;
+            transition: all 0.3s ease;
+        }
+
+        .connection-line.strong {
+            stroke: #ffd700;
+            stroke-width: 5;
+        }
+
+        .connection-line.weak {
+            stroke: #666;
+            stroke-width: 2;
+        }
+
+        /* Weight Labels on Lines */
+        .weight-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #63b3ed;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border: 1px solid #4a90d9;
+            z-index: 3;
+            white-space: nowrap;
+        }
+
+        .weight-label .contribution {
+            color: #ffd700;
+            margin-left: 6px;
+        }
+
+        /* Central Neuron */
+        .neuron-center {
             position: relative;
-            overflow: hidden;
+            z-index: 2;
+            margin: 0 60px;
         }
 
         .neuron {
-            width: 180px;
-            height: 180px;
+            width: 160px;
+            height: 160px;
             border-radius: 50%;
             background: radial-gradient(circle at 30% 30%, #555, #222);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
+            flex-direction: column;
+            font-size: 2.5rem;
             transition: all 0.4s ease;
             position: relative;
-            z-index: 2;
+            border: 4px solid #444;
+        }
+
+        .neuron .sigma {
+            font-size: 1.8rem;
+            color: #aaa;
+            margin-top: 5px;
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
         }
 
         .neuron.firing {
             background: radial-gradient(circle at 30% 30%, #ffd700, #ff8c00);
+            border-color: #ffd700;
             box-shadow:
                 0 0 30px rgba(255, 215, 0, 0.6),
                 0 0 60px rgba(255, 215, 0, 0.4),
@@ -194,77 +262,100 @@
             animation: pulse 1s infinite;
         }
 
+        .neuron.firing .sigma {
+            color: #fff;
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
         }
 
-        .neuron-glow {
-            position: absolute;
-            width: 200px;
-            height: 200px;
+        /* Output Section */
+        .output-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 2;
+        }
+
+        .output-circle {
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            background: transparent;
+            background: linear-gradient(135deg, #666, #333);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #888;
+            border: 3px solid #555;
             transition: all 0.4s ease;
-            z-index: 1;
         }
 
-        .neuron.firing ~ .neuron-glow {
-            box-shadow: 0 0 80px 40px rgba(255, 215, 0, 0.3);
+        .output-circle.fired {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #fff;
+            border-color: #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
         }
 
-        .decision-label {
-            margin-top: 20px;
-            font-size: 1.3rem;
+        .output-circle .percent {
+            font-size: 1.4rem;
+        }
+
+        .output-circle .label {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+
+        .output-decision {
+            font-size: 1.1rem;
             font-weight: bold;
             text-align: center;
-            transition: all 0.3s ease;
+            max-width: 120px;
         }
 
-        .decision-label.fired {
+        .output-decision.fired {
             color: #ffd700;
         }
 
-        .decision-label.dormant {
+        .output-decision.dormant {
             color: #888;
         }
 
         /* Celebration */
         .celebration {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1.1rem;
+            font-size: 1.3rem;
             color: #ffd700;
             text-align: center;
             opacity: 0;
             pointer-events: none;
-            z-index: 10;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            z-index: 100;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 16px;
+            border: 2px solid #ffd700;
         }
 
         .celebration.show {
-            animation: celebrationAnim 2s forwards;
+            animation: celebrationAnim 2.5s forwards;
         }
 
         @keyframes celebrationAnim {
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
-        }
-
-        /* Burst particles */
-        .burst {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 5;
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            25% { transform: translate(-50%, -50%) scale(1); }
+            75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
         }
 
         /* Math Dashboard */
@@ -297,35 +388,40 @@
         }
 
         .equation-value {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #63b3ed;
             word-break: break-all;
         }
 
-        .result-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .result-box {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .result-box .label {
+            color: #aaa;
+            font-size: 0.85rem;
             margin-bottom: 8px;
         }
 
-        .result-label {
-            color: #aaa;
-        }
-
-        .result-value {
+        .result-box .value {
+            font-size: 1.5rem;
             font-weight: bold;
-            font-size: 1.2rem;
         }
 
-        .result-value.z-value {
+        .result-box .value.z-value {
             color: #63b3ed;
         }
 
-        .result-value.a-value {
+        .result-box .value.a-value {
             color: #ffd700;
         }
 
@@ -362,6 +458,62 @@
             color: #4a90d9;
             text-decoration: none;
         }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .neuron-diagram {
+                flex-direction: column;
+                gap: 30px;
+            }
+
+            .input-nodes {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .input-node {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .input-slider-group {
+                width: 80px;
+            }
+
+            .neuron-center {
+                margin: 20px 0;
+            }
+
+            .connections-svg {
+                display: none;
+            }
+
+            .weight-label {
+                display: none;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .input-circle {
+                width: 55px;
+                height: 55px;
+            }
+
+            .neuron {
+                width: 120px;
+                height: 120px;
+            }
+
+            .output-circle {
+                width: 80px;
+                height: 80px;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -377,40 +529,58 @@
             <button class="scenario-btn" data-scenario="tech">💻 Tech Upgrade</button>
         </div>
 
-        <div class="main-content">
-            <div class="input-section">
-                <h2>Neural Inputs</h2>
-                <div id="inputsContainer"></div>
-            </div>
+        <div class="neuron-viz-section">
+            <div class="neuron-diagram" id="neuronDiagram">
+                <!-- Input Nodes -->
+                <div class="input-nodes" id="inputNodes"></div>
 
-            <div class="neuron-section">
-                <div class="neuron" id="neuron">🧠</div>
-                <div class="neuron-glow"></div>
-                <div class="decision-label dormant" id="decisionLabel">Dormant</div>
-                <div class="celebration" id="celebration"></div>
+                <!-- SVG Connections -->
+                <svg class="connections-svg" id="connectionsSvg"></svg>
+
+                <!-- Weight Labels Container -->
+                <div id="weightLabels"></div>
+
+                <!-- Central Neuron -->
+                <div class="neuron-center">
+                    <div class="neuron" id="neuron">
+                        <span>Σ</span>
+                        <span class="sigma">σ(z)</span>
+                    </div>
+                </div>
+
+                <!-- Output -->
+                <div class="output-section">
+                    <div class="output-circle" id="outputCircle">
+                        <span class="percent" id="outputPercent">50%</span>
+                        <span class="label">activation</span>
+                    </div>
+                    <div class="output-decision dormant" id="decisionLabel">Dormant</div>
+                </div>
             </div>
         </div>
 
         <div class="math-dashboard">
             <h2>Math Dashboard</h2>
             <div class="equation">
-                <div class="equation-label">Weighted Sum Formula:</div>
-                <div class="equation-value" id="formulaDisplay">z = (w₁ × i₁) + (w₂ × i₂) + b</div>
-            </div>
-            <div class="equation">
-                <div class="equation-label">Current Calculation:</div>
+                <div class="equation-label">Weighted Sum:</div>
                 <div class="equation-value" id="calculationDisplay">z = ...</div>
             </div>
-            <div class="result-row">
-                <span class="result-label">Weighted Sum (z):</span>
-                <span class="result-value z-value" id="zValue">0.00</span>
+            <div class="equation">
+                <div class="equation-label">Sigmoid Activation:</div>
+                <div class="equation-value">a = 1 / (1 + e<sup>-z</sup>)</div>
             </div>
-            <div class="result-row">
-                <span class="result-label">Activation σ(z):</span>
-                <span class="result-value a-value" id="aValue">0.50</span>
+            <div class="results-grid">
+                <div class="result-box">
+                    <div class="label">Weighted Sum (z)</div>
+                    <div class="value z-value" id="zValue">0.00</div>
+                </div>
+                <div class="result-box">
+                    <div class="label">Activation (a)</div>
+                    <div class="value a-value" id="aValue">0.50</div>
+                </div>
             </div>
             <div class="threshold-indicator below" id="thresholdIndicator">
-                Below Threshold (a &lt; 0.5)
+                Below Threshold (a &lt; 0.5) — Dormant
             </div>
         </div>
 
@@ -418,6 +588,8 @@
             AIML 1870 - The Decision Neuron Quest | <a href="https://github.com/AIML-1870-2026/broccolistonks">broccolistonks</a>
         </footer>
     </div>
+
+    <div class="celebration" id="celebration"></div>
 
     <script>
         // Scenario configurations
@@ -430,7 +602,7 @@
                 inputs: [
                     { id: 'input1', label: 'Exam Urgency', weight: 2.5, defaultValue: 0.5 },
                     { id: 'input2', label: 'Caffeine Level', weight: 1.5, defaultValue: 0.3 },
-                    { id: 'input3', label: 'Interest in Subject', weight: 1.0, defaultValue: 0.4 }
+                    { id: 'input3', label: 'Interest', weight: 1.0, defaultValue: 0.4 }
                 ],
                 bias: -2.0
             },
@@ -440,9 +612,9 @@
                 decisionB: 'Not yet...',
                 celebration: '🎉 New furry friend incoming! Prepare the treats!',
                 inputs: [
-                    { id: 'input1', label: 'Available Time', weight: 2.0, defaultValue: 0.5 },
-                    { id: 'input2', label: 'Financial Stability', weight: 2.5, defaultValue: 0.4 },
-                    { id: 'input3', label: 'Loneliness Level', weight: 1.5, defaultValue: 0.6 }
+                    { id: 'input1', label: 'Free Time', weight: 2.0, defaultValue: 0.5 },
+                    { id: 'input2', label: 'Finances', weight: 2.5, defaultValue: 0.4 },
+                    { id: 'input3', label: 'Loneliness', weight: 1.5, defaultValue: 0.6 }
                 ],
                 bias: -2.5
             },
@@ -452,9 +624,9 @@
                 decisionB: 'Keep current...',
                 celebration: '🚀 Time to upgrade! Your wallet will recover... eventually!',
                 inputs: [
-                    { id: 'input1', label: 'Current Device Age', weight: 1.5, defaultValue: 0.5 },
-                    { id: 'input2', label: 'Budget Available', weight: 2.5, defaultValue: 0.3 },
-                    { id: 'input3', label: 'FOMO Intensity', weight: 1.0, defaultValue: 0.7 }
+                    { id: 'input1', label: 'Device Age', weight: 1.5, defaultValue: 0.5 },
+                    { id: 'input2', label: 'Budget', weight: 2.5, defaultValue: 0.3 },
+                    { id: 'input3', label: 'FOMO', weight: 1.0, defaultValue: 0.7 }
                 ],
                 bias: -2.0
             }
@@ -466,11 +638,15 @@
 
         // DOM Elements
         const scenarioTitle = document.getElementById('scenarioTitle');
-        const inputsContainer = document.getElementById('inputsContainer');
+        const inputNodes = document.getElementById('inputNodes');
+        const neuronDiagram = document.getElementById('neuronDiagram');
+        const connectionsSvg = document.getElementById('connectionsSvg');
+        const weightLabels = document.getElementById('weightLabels');
         const neuron = document.getElementById('neuron');
+        const outputCircle = document.getElementById('outputCircle');
+        const outputPercent = document.getElementById('outputPercent');
         const decisionLabel = document.getElementById('decisionLabel');
         const celebration = document.getElementById('celebration');
-        const formulaDisplay = document.getElementById('formulaDisplay');
         const calculationDisplay = document.getElementById('calculationDisplay');
         const zValue = document.getElementById('zValue');
         const aValue = document.getElementById('aValue');
@@ -491,6 +667,82 @@
             return 1 / (1 + Math.exp(-z));
         }
 
+        // Update connection lines
+        function updateConnections() {
+            const scenario = scenarios[currentScenario];
+            const svgRect = connectionsSvg.getBoundingClientRect();
+            const diagramRect = neuronDiagram.getBoundingClientRect();
+
+            // Clear existing
+            connectionsSvg.innerHTML = '';
+            weightLabels.innerHTML = '';
+
+            // Get neuron center position
+            const neuronRect = neuron.getBoundingClientRect();
+            const neuronCenterX = neuronRect.left + neuronRect.width / 2 - diagramRect.left;
+            const neuronCenterY = neuronRect.top + neuronRect.height / 2 - diagramRect.top;
+
+            // Draw lines from each input to neuron
+            const inputCircles = document.querySelectorAll('.input-circle');
+            inputCircles.forEach((circle, i) => {
+                const circleRect = circle.getBoundingClientRect();
+                const startX = circleRect.right - diagramRect.left;
+                const startY = circleRect.top + circleRect.height / 2 - diagramRect.top;
+                const endX = neuronCenterX - neuron.offsetWidth / 2;
+                const endY = neuronCenterY;
+
+                // Calculate contribution strength
+                const input = scenario.inputs[i];
+                const val = inputValues[input.id] || 0;
+                const contribution = input.weight * val;
+                const maxContribution = input.weight; // max when val = 1
+                const strength = contribution / maxContribution;
+
+                // Create curved path
+                const midX = (startX + endX) / 2;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const d = `M ${startX} ${startY} Q ${midX} ${startY}, ${midX} ${(startY + endY) / 2} T ${endX} ${endY}`;
+                path.setAttribute('d', d);
+                path.classList.add('connection-line');
+
+                // Color based on strength
+                if (strength > 0.6) {
+                    path.classList.add('strong');
+                } else if (strength < 0.3) {
+                    path.classList.add('weak');
+                }
+
+                // Set opacity based on contribution
+                path.style.opacity = 0.4 + strength * 0.6;
+
+                connectionsSvg.appendChild(path);
+
+                // Add weight label
+                const label = document.createElement('div');
+                label.className = 'weight-label';
+                label.innerHTML = `w=${input.weight.toFixed(1)} <span class="contribution">→ ${(contribution).toFixed(2)}</span>`;
+                label.style.left = `${midX - 50}px`;
+                label.style.top = `${(startY + endY) / 2 - 12}px`;
+                weightLabels.appendChild(label);
+            });
+
+            // Draw output line
+            const outputRect = outputCircle.getBoundingClientRect();
+            const outStartX = neuronCenterX + neuron.offsetWidth / 2;
+            const outStartY = neuronCenterY;
+            const outEndX = outputRect.left - diagramRect.left;
+            const outEndY = outputRect.top + outputRect.height / 2 - diagramRect.top;
+
+            const outPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const outD = `M ${outStartX} ${outStartY} L ${outEndX} ${outEndY}`;
+            outPath.setAttribute('d', outD);
+            outPath.classList.add('connection-line');
+            if (wasFiring) {
+                outPath.classList.add('strong');
+            }
+            connectionsSvg.appendChild(outPath);
+        }
+
         // Calculate neuron output
         function calculate() {
             const scenario = scenarios[currentScenario];
@@ -508,20 +760,31 @@
             calculationDisplay.textContent = `z = ${calcParts.join(' + ')} = ${z.toFixed(3)}`;
 
             const a = sigmoid(z);
+            const percent = (a * 100).toFixed(1);
             const isFiring = a >= 0.5;
 
             // Update displays
             zValue.textContent = z.toFixed(3);
             aValue.textContent = a.toFixed(4);
+            outputPercent.textContent = `${percent}%`;
+
+            // Update input circles with current values
+            const inputCircles = document.querySelectorAll('.input-circle .value');
+            scenario.inputs.forEach((input, i) => {
+                if (inputCircles[i]) {
+                    inputCircles[i].textContent = (inputValues[input.id] * 100).toFixed(0) + '%';
+                }
+            });
 
             // Update neuron visual
             if (isFiring) {
                 neuron.classList.add('firing');
+                outputCircle.classList.add('fired');
                 decisionLabel.textContent = scenario.decisionA;
                 decisionLabel.classList.add('fired');
                 decisionLabel.classList.remove('dormant');
                 thresholdIndicator.className = 'threshold-indicator above';
-                thresholdIndicator.innerHTML = `Above Threshold (a ≥ 0.5) - NEURON FIRES!`;
+                thresholdIndicator.innerHTML = `Above Threshold (a ≥ 0.5) — FIRES!`;
 
                 // Trigger celebration if just started firing
                 if (!wasFiring) {
@@ -529,66 +792,18 @@
                 }
             } else {
                 neuron.classList.remove('firing');
+                outputCircle.classList.remove('fired');
                 decisionLabel.textContent = scenario.decisionB;
                 decisionLabel.classList.remove('fired');
                 decisionLabel.classList.add('dormant');
                 thresholdIndicator.className = 'threshold-indicator below';
-                thresholdIndicator.innerHTML = `Below Threshold (a < 0.5) - Dormant`;
+                thresholdIndicator.innerHTML = `Below Threshold (a < 0.5) — Dormant`;
             }
-
-            // Update neuron glow intensity based on activation
-            const glowIntensity = Math.max(0, (a - 0.3) * 1.5);
-            neuron.style.boxShadow = `0 0 ${30 * glowIntensity}px rgba(255, 215, 0, ${glowIntensity * 0.6})`;
 
             wasFiring = isFiring;
-        }
 
-        // Create burst particles
-        function createBurst() {
-            const neuronSection = document.querySelector('.neuron-section');
-            const colors = ['#ffd700', '#ff8c00', '#ffec8b', '#fff'];
-
-            for (let i = 0; i < 12; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'burst';
-                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-
-                const angle = (i / 12) * Math.PI * 2;
-                const distance = 100 + Math.random() * 50;
-                const duration = 0.5 + Math.random() * 0.3;
-
-                particle.style.cssText += `
-                    animation: burst${i} ${duration}s ease-out forwards;
-                `;
-
-                // Create dynamic keyframe
-                const keyframes = `
-                    @keyframes burst${i} {
-                        0% {
-                            transform: translate(-50%, -50%) scale(1);
-                            opacity: 1;
-                        }
-                        100% {
-                            transform: translate(
-                                calc(-50% + ${Math.cos(angle) * distance}px),
-                                calc(-50% + ${Math.sin(angle) * distance}px)
-                            ) scale(0);
-                            opacity: 0;
-                        }
-                    }
-                `;
-
-                const styleSheet = document.createElement('style');
-                styleSheet.textContent = keyframes;
-                document.head.appendChild(styleSheet);
-
-                neuronSection.appendChild(particle);
-
-                setTimeout(() => {
-                    particle.remove();
-                    styleSheet.remove();
-                }, duration * 1000);
-            }
+            // Update connection visuals
+            updateConnections();
         }
 
         // Trigger celebration
@@ -596,16 +811,12 @@
             const scenario = scenarios[currentScenario];
             celebration.textContent = scenario.celebration;
             celebration.classList.remove('show');
-
-            // Force reflow
             void celebration.offsetWidth;
-
             celebration.classList.add('show');
-            createBurst();
 
             setTimeout(() => {
                 celebration.classList.remove('show');
-            }, 2000);
+            }, 2500);
         }
 
         // Load scenario
@@ -614,52 +825,48 @@
             scenarioTitle.textContent = scenario.title;
             wasFiring = false;
 
-            // Build formula display
-            const formulaParts = scenario.inputs.map((input, i) =>
-                `(w${i + 1} × i${i + 1})`
-            ).join(' + ');
-            formulaDisplay.textContent = `z = ${formulaParts} + b`;
-
             // Clear and rebuild inputs
-            inputsContainer.innerHTML = '';
+            inputNodes.innerHTML = '';
             inputValues = {};
 
             scenario.inputs.forEach(input => {
                 inputValues[input.id] = input.defaultValue;
 
-                const group = document.createElement('div');
-                group.className = 'input-group';
+                const node = document.createElement('div');
+                node.className = 'input-node';
 
-                const labelRow = document.createElement('div');
-                labelRow.className = 'input-label';
-                labelRow.innerHTML = `
-                    <span>${input.label} <span class="weight">(w = ${input.weight.toFixed(1)})</span></span>
-                    <span class="input-value" id="${input.id}Value">${input.defaultValue.toFixed(2)}</span>
+                node.innerHTML = `
+                    <div class="input-slider-group">
+                        <label>${input.label}</label>
+                        <input type="range" id="${input.id}" min="0" max="1" step="0.01" value="${input.defaultValue}">
+                    </div>
+                    <div class="input-circle" data-input="${input.id}">
+                        <span class="value">${(input.defaultValue * 100).toFixed(0)}%</span>
+                        <span class="label">${input.label}</span>
+                    </div>
                 `;
 
-                const slider = document.createElement('input');
-                slider.type = 'range';
-                slider.id = input.id;
-                slider.min = '0';
-                slider.max = '1';
-                slider.step = '0.01';
-                slider.value = input.defaultValue;
+                inputNodes.appendChild(node);
 
+                // Add slider listener
+                const slider = node.querySelector('input[type="range"]');
                 slider.addEventListener('input', (e) => {
                     const val = parseFloat(e.target.value);
                     inputValues[input.id] = val;
-                    document.getElementById(`${input.id}Value`).textContent = val.toFixed(2);
                     calculate();
                 });
-
-                group.appendChild(labelRow);
-                group.appendChild(slider);
-                inputsContainer.appendChild(group);
             });
 
-            // Initial calculation
-            calculate();
+            // Initial calculation after DOM is ready
+            requestAnimationFrame(() => {
+                calculate();
+            });
         }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            updateConnections();
+        });
 
         // Initialize
         loadScenario(currentScenario);
