@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Decision Neuron Quest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .scenario-title {
+            font-size: 1.5rem;
+            color: #ffd700;
+            transition: all 0.3s ease;
+        }
+
+        /* Scenario Selector */
+        .scenario-panel {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .scenario-btn {
+            padding: 12px 24px;
+            border: 2px solid #4a90d9;
+            background: transparent;
+            color: #4a90d9;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .scenario-btn:hover {
+            background: rgba(74, 144, 217, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .scenario-btn.active {
+            background: #4a90d9;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(74, 144, 217, 0.4);
+        }
+
+        /* Main Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 700px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Input Section */
+        .input-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #4a90d9;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .input-label .weight {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .input-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a90d9, #63b3ed);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(74, 144, 217, 0.5);
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a90d9, #63b3ed);
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Neuron Visual Section */
+        .neuron-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .neuron {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #555, #222);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            transition: all 0.4s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .neuron.firing {
+            background: radial-gradient(circle at 30% 30%, #ffd700, #ff8c00);
+            box-shadow:
+                0 0 30px rgba(255, 215, 0, 0.6),
+                0 0 60px rgba(255, 215, 0, 0.4),
+                0 0 100px rgba(255, 215, 0, 0.2);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .neuron-glow {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: transparent;
+            transition: all 0.4s ease;
+            z-index: 1;
+        }
+
+        .neuron.firing ~ .neuron-glow {
+            box-shadow: 0 0 80px 40px rgba(255, 215, 0, 0.3);
+        }
+
+        .decision-label {
+            margin-top: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .decision-label.fired {
+            color: #ffd700;
+        }
+
+        .decision-label.dormant {
+            color: #888;
+        }
+
+        /* Celebration */
+        .celebration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.1rem;
+            color: #ffd700;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+
+        .celebration.show {
+            animation: celebrationAnim 2s forwards;
+        }
+
+        @keyframes celebrationAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
+        }
+
+        /* Burst particles */
+        .burst {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Math Dashboard */
+        .math-dashboard {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .math-dashboard h2 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: #4a90d9;
+            text-align: center;
+        }
+
+        .equation {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .equation-label {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .equation-value {
+            font-size: 1.1rem;
+            color: #63b3ed;
+            word-break: break-all;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .result-label {
+            color: #aaa;
+        }
+
+        .result-value {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .result-value.z-value {
+            color: #63b3ed;
+        }
+
+        .result-value.a-value {
+            color: #ffd700;
+        }
+
+        .threshold-indicator {
+            text-align: center;
+            padding: 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .threshold-indicator.above {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+        }
+
+        .threshold-indicator.below {
+            background: rgba(128, 128, 128, 0.2);
+            color: #888;
+            border: 1px solid rgba(128, 128, 128, 0.5);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: #4a90d9;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>The Decision Neuron Quest</h1>
+            <div class="scenario-title" id="scenarioTitle">📚 Study vs. 😴 Sleep</div>
+        </header>
+
+        <div class="scenario-panel">
+            <button class="scenario-btn active" data-scenario="study">📚 Study vs. Sleep</button>
+            <button class="scenario-btn" data-scenario="pet">🐕 Adopt a Pet</button>
+            <button class="scenario-btn" data-scenario="tech">💻 Tech Upgrade</button>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2>Neural Inputs</h2>
+                <div id="inputsContainer"></div>
+            </div>
+
+            <div class="neuron-section">
+                <div class="neuron" id="neuron">🧠</div>
+                <div class="neuron-glow"></div>
+                <div class="decision-label dormant" id="decisionLabel">Dormant</div>
+                <div class="celebration" id="celebration"></div>
+            </div>
+        </div>
+
+        <div class="math-dashboard">
+            <h2>Math Dashboard</h2>
+            <div class="equation">
+                <div class="equation-label">Weighted Sum Formula:</div>
+                <div class="equation-value" id="formulaDisplay">z = (w₁ × i₁) + (w₂ × i₂) + b</div>
+            </div>
+            <div class="equation">
+                <div class="equation-label">Current Calculation:</div>
+                <div class="equation-value" id="calculationDisplay">z = ...</div>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Weighted Sum (z):</span>
+                <span class="result-value z-value" id="zValue">0.00</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Activation σ(z):</span>
+                <span class="result-value a-value" id="aValue">0.50</span>
+            </div>
+            <div class="threshold-indicator below" id="thresholdIndicator">
+                Below Threshold (a &lt; 0.5)
+            </div>
+        </div>
+
+        <footer>
+            AIML 1870 - The Decision Neuron Quest | <a href="https://github.com/AIML-1870-2026/broccolistonks">broccolistonks</a>
+        </footer>
+    </div>
+
+    <script>
+        // Scenario configurations
+        const scenarios = {
+            study: {
+                title: '📚 Study vs. 😴 Sleep',
+                decisionA: 'STUDY!',
+                decisionB: 'Sleep wins...',
+                celebration: '📖 Knowledge is power! Time to hit the books!',
+                inputs: [
+                    { id: 'input1', label: 'Exam Urgency', weight: 2.5, defaultValue: 0.5 },
+                    { id: 'input2', label: 'Caffeine Level', weight: 1.5, defaultValue: 0.3 },
+                    { id: 'input3', label: 'Interest in Subject', weight: 1.0, defaultValue: 0.4 }
+                ],
+                bias: -2.0
+            },
+            pet: {
+                title: '🐕 Adopt a Pet',
+                decisionA: 'ADOPT!',
+                decisionB: 'Not yet...',
+                celebration: '🎉 New furry friend incoming! Prepare the treats!',
+                inputs: [
+                    { id: 'input1', label: 'Available Time', weight: 2.0, defaultValue: 0.5 },
+                    { id: 'input2', label: 'Financial Stability', weight: 2.5, defaultValue: 0.4 },
+                    { id: 'input3', label: 'Loneliness Level', weight: 1.5, defaultValue: 0.6 }
+                ],
+                bias: -2.5
+            },
+            tech: {
+                title: '💻 Tech Upgrade',
+                decisionA: 'UPGRADE!',
+                decisionB: 'Keep current...',
+                celebration: '🚀 Time to upgrade! Your wallet will recover... eventually!',
+                inputs: [
+                    { id: 'input1', label: 'Current Device Age', weight: 1.5, defaultValue: 0.5 },
+                    { id: 'input2', label: 'Budget Available', weight: 2.5, defaultValue: 0.3 },
+                    { id: 'input3', label: 'FOMO Intensity', weight: 1.0, defaultValue: 0.7 }
+                ],
+                bias: -2.0
+            }
+        };
+
+        let currentScenario = 'study';
+        let inputValues = {};
+        let wasFiring = false;
+
+        // DOM Elements
+        const scenarioTitle = document.getElementById('scenarioTitle');
+        const inputsContainer = document.getElementById('inputsContainer');
+        const neuron = document.getElementById('neuron');
+        const decisionLabel = document.getElementById('decisionLabel');
+        const celebration = document.getElementById('celebration');
+        const formulaDisplay = document.getElementById('formulaDisplay');
+        const calculationDisplay = document.getElementById('calculationDisplay');
+        const zValue = document.getElementById('zValue');
+        const aValue = document.getElementById('aValue');
+        const thresholdIndicator = document.getElementById('thresholdIndicator');
+
+        // Initialize scenario buttons
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentScenario = btn.dataset.scenario;
+                loadScenario(currentScenario);
+            });
+        });
+
+        // Sigmoid activation function
+        function sigmoid(z) {
+            return 1 / (1 + Math.exp(-z));
+        }
+
+        // Calculate neuron output
+        function calculate() {
+            const scenario = scenarios[currentScenario];
+            let z = scenario.bias;
+            let calcParts = [];
+
+            scenario.inputs.forEach(input => {
+                const val = inputValues[input.id] || 0;
+                const contribution = input.weight * val;
+                z += contribution;
+                calcParts.push(`(${input.weight.toFixed(1)} × ${val.toFixed(2)})`);
+            });
+
+            calcParts.push(`+ (${scenario.bias.toFixed(1)})`);
+            calculationDisplay.textContent = `z = ${calcParts.join(' + ')} = ${z.toFixed(3)}`;
+
+            const a = sigmoid(z);
+            const isFiring = a >= 0.5;
+
+            // Update displays
+            zValue.textContent = z.toFixed(3);
+            aValue.textContent = a.toFixed(4);
+
+            // Update neuron visual
+            if (isFiring) {
+                neuron.classList.add('firing');
+                decisionLabel.textContent = scenario.decisionA;
+                decisionLabel.classList.add('fired');
+                decisionLabel.classList.remove('dormant');
+                thresholdIndicator.className = 'threshold-indicator above';
+                thresholdIndicator.innerHTML = `Above Threshold (a ≥ 0.5) - NEURON FIRES!`;
+
+                // Trigger celebration if just started firing
+                if (!wasFiring) {
+                    triggerCelebration();
+                }
+            } else {
+                neuron.classList.remove('firing');
+                decisionLabel.textContent = scenario.decisionB;
+                decisionLabel.classList.remove('fired');
+                decisionLabel.classList.add('dormant');
+                thresholdIndicator.className = 'threshold-indicator below';
+                thresholdIndicator.innerHTML = `Below Threshold (a < 0.5) - Dormant`;
+            }
+
+            // Update neuron glow intensity based on activation
+            const glowIntensity = Math.max(0, (a - 0.3) * 1.5);
+            neuron.style.boxShadow = `0 0 ${30 * glowIntensity}px rgba(255, 215, 0, ${glowIntensity * 0.6})`;
+
+            wasFiring = isFiring;
+        }
+
+        // Create burst particles
+        function createBurst() {
+            const neuronSection = document.querySelector('.neuron-section');
+            const colors = ['#ffd700', '#ff8c00', '#ffec8b', '#fff'];
+
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'burst';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+                const angle = (i / 12) * Math.PI * 2;
+                const distance = 100 + Math.random() * 50;
+                const duration = 0.5 + Math.random() * 0.3;
+
+                particle.style.cssText += `
+                    animation: burst${i} ${duration}s ease-out forwards;
+                `;
+
+                // Create dynamic keyframe
+                const keyframes = `
+                    @keyframes burst${i} {
+                        0% {
+                            transform: translate(-50%, -50%) scale(1);
+                            opacity: 1;
+                        }
+                        100% {
+                            transform: translate(
+                                calc(-50% + ${Math.cos(angle) * distance}px),
+                                calc(-50% + ${Math.sin(angle) * distance}px)
+                            ) scale(0);
+                            opacity: 0;
+                        }
+                    }
+                `;
+
+                const styleSheet = document.createElement('style');
+                styleSheet.textContent = keyframes;
+                document.head.appendChild(styleSheet);
+
+                neuronSection.appendChild(particle);
+
+                setTimeout(() => {
+                    particle.remove();
+                    styleSheet.remove();
+                }, duration * 1000);
+            }
+        }
+
+        // Trigger celebration
+        function triggerCelebration() {
+            const scenario = scenarios[currentScenario];
+            celebration.textContent = scenario.celebration;
+            celebration.classList.remove('show');
+
+            // Force reflow
+            void celebration.offsetWidth;
+
+            celebration.classList.add('show');
+            createBurst();
+
+            setTimeout(() => {
+                celebration.classList.remove('show');
+            }, 2000);
+        }
+
+        // Load scenario
+        function loadScenario(scenarioKey) {
+            const scenario = scenarios[scenarioKey];
+            scenarioTitle.textContent = scenario.title;
+            wasFiring = false;
+
+            // Build formula display
+            const formulaParts = scenario.inputs.map((input, i) =>
+                `(w${i + 1} × i${i + 1})`
+            ).join(' + ');
+            formulaDisplay.textContent = `z = ${formulaParts} + b`;
+
+            // Clear and rebuild inputs
+            inputsContainer.innerHTML = '';
+            inputValues = {};
+
+            scenario.inputs.forEach(input => {
+                inputValues[input.id] = input.defaultValue;
+
+                const group = document.createElement('div');
+                group.className = 'input-group';
+
+                const labelRow = document.createElement('div');
+                labelRow.className = 'input-label';
+                labelRow.innerHTML = `
+                    <span>${input.label} <span class="weight">(w = ${input.weight.toFixed(1)})</span></span>
+                    <span class="input-value" id="${input.id}Value">${input.defaultValue.toFixed(2)}</span>
+                `;
+
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.id = input.id;
+                slider.min = '0';
+                slider.max = '1';
+                slider.step = '0.01';
+                slider.value = input.defaultValue;
+
+                slider.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    inputValues[input.id] = val;
+                    document.getElementById(`${input.id}Value`).textContent = val.toFixed(2);
+                    calculate();
+                });
+
+                group.appendChild(labelRow);
+                group.appendChild(slider);
+                inputsContainer.appendChild(group);
+            });
+
+            // Initial calculation
+            calculate();
+        }
+
+        // Initialize
+        loadScenario(currentScenario);
+    </script>
+</body>
+</html>
