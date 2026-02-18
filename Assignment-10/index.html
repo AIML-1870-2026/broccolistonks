@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGB Petal Wheel Quest</title>
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 300;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #aaa;
+        }
+
+        /* ── Petal Wheel ── */
+        .wheel-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+        }
+
+        .petal {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            mix-blend-mode: screen;
+            transition: background-color 0.05s ease;
+        }
+
+        .petal-red {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgb(255, 0, 0);
+        }
+
+        .petal-green {
+            bottom: 10px;
+            left: 0;
+            background-color: rgb(0, 255, 0);
+        }
+
+        .petal-blue {
+            bottom: 10px;
+            right: 0;
+            background-color: rgb(0, 0, 255);
+        }
+
+        /* ── Center Breathing Pulse ── */
+        .center-pulse {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+            animation: breathe 2.5s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1.0);
+                box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+                opacity: 0.7;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.05);
+                box-shadow: 0 0 30px rgba(255, 255, 255, 0.45);
+                opacity: 1;
+            }
+        }
+
+        /* ── Controls ── */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .slider-row label {
+            width: 20px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .label-r { color: #ff4444; }
+        .label-g { color: #44ff44; }
+        .label-b { color: #4488ff; }
+
+        .slider-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+        }
+
+        .slider-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #222;
+        }
+
+        #redSlider::-webkit-slider-thumb { background: #ff4444; }
+        #greenSlider::-webkit-slider-thumb { background: #44ff44; }
+        #blueSlider::-webkit-slider-thumb { background: #4488ff; }
+
+        .slider-row .val {
+            width: 36px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        /* ── Color Info Display ── */
+        .color-info {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            border: 2px solid #333;
+            transition: background-color 0.05s ease;
+        }
+
+        .color-values {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .color-values span {
+            color: #bbb;
+        }
+
+        /* ── Contrast Checker ── */
+        .contrast-checker {
+            width: 100%;
+            max-width: 360px;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .contrast-header {
+            padding: 0.5rem 1rem;
+            background: #1a1a1a;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #666;
+        }
+
+        .contrast-preview {
+            padding: 1.25rem 1rem;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: background-color 0.05s ease, color 0.05s ease;
+        }
+
+        .contrast-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 1rem;
+            background: #1a1a1a;
+            font-size: 0.8rem;
+        }
+
+        .contrast-ratio {
+            font-family: 'Courier New', monospace;
+            color: #ccc;
+        }
+
+        .contrast-badges {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .badge {
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-pass { background: #1b5e20; color: #66bb6a; }
+        .badge-fail { background: #4a1515; color: #ef5350; }
+    </style>
+</head>
+<body>
+
+    <h1>RGB Petal Wheel</h1>
+
+    <div class="wheel-container">
+        <div class="petal petal-red" id="petalRed"></div>
+        <div class="petal petal-green" id="petalGreen"></div>
+        <div class="petal petal-blue" id="petalBlue"></div>
+        <div class="center-pulse" id="centerPulse"></div>
+    </div>
+
+    <div class="controls">
+        <div class="slider-row">
+            <label class="label-r">R</label>
+            <input type="range" id="redSlider" min="0" max="255" value="255">
+            <span class="val" id="redVal">255</span>
+        </div>
+        <div class="slider-row">
+            <label class="label-g">G</label>
+            <input type="range" id="greenSlider" min="0" max="255" value="255">
+            <span class="val" id="greenVal">255</span>
+        </div>
+        <div class="slider-row">
+            <label class="label-b">B</label>
+            <input type="range" id="blueSlider" min="0" max="255" value="255">
+            <span class="val" id="blueVal">255</span>
+        </div>
+    </div>
+
+    <div class="color-info">
+        <div class="color-swatch" id="swatch"></div>
+        <div class="color-values">
+            <span id="rgbDisplay">rgb(255, 255, 255)</span>
+            <span id="hexDisplay">#FFFFFF</span>
+        </div>
+    </div>
+
+    <div class="contrast-checker">
+        <div class="contrast-header">Contrast Checker</div>
+        <div class="contrast-preview" id="contrastPreview">Sample Text</div>
+        <div class="contrast-details">
+            <span class="contrast-ratio" id="contrastRatio">Ratio: 1.00:1</span>
+            <div class="contrast-badges">
+                <span class="badge" id="badgeAA">AA</span>
+                <span class="badge" id="badgeAAA">AAA</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const redSlider = document.getElementById('redSlider');
+        const greenSlider = document.getElementById('greenSlider');
+        const blueSlider = document.getElementById('blueSlider');
+        const redVal = document.getElementById('redVal');
+        const greenVal = document.getElementById('greenVal');
+        const blueVal = document.getElementById('blueVal');
+        const petalRed = document.getElementById('petalRed');
+        const petalGreen = document.getElementById('petalGreen');
+        const petalBlue = document.getElementById('petalBlue');
+        const centerPulse = document.getElementById('centerPulse');
+        const swatch = document.getElementById('swatch');
+        const rgbDisplay = document.getElementById('rgbDisplay');
+        const hexDisplay = document.getElementById('hexDisplay');
+        const contrastPreview = document.getElementById('contrastPreview');
+        const contrastRatio = document.getElementById('contrastRatio');
+        const badgeAA = document.getElementById('badgeAA');
+        const badgeAAA = document.getElementById('badgeAAA');
+
+        function toHex(val) {
+            return val.toString(16).padStart(2, '0').toUpperCase();
+        }
+
+        // Relative luminance per WCAG 2.x
+        function relativeLuminance(r, g, b) {
+            const [rs, gs, bs] = [r, g, b].map(c => {
+                c = c / 255;
+                return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+        }
+
+        function contrastRatioCalc(l1, l2) {
+            const lighter = Math.max(l1, l2);
+            const darker = Math.min(l1, l2);
+            return (lighter + 0.05) / (darker + 0.05);
+        }
+
+        function update() {
+            const r = parseInt(redSlider.value);
+            const g = parseInt(greenSlider.value);
+            const b = parseInt(blueSlider.value);
+
+            // Update value labels
+            redVal.textContent = r;
+            greenVal.textContent = g;
+            blueVal.textContent = b;
+
+            // Update petals
+            petalRed.style.backgroundColor = `rgb(${r}, 0, 0)`;
+            petalGreen.style.backgroundColor = `rgb(0, ${g}, 0)`;
+            petalBlue.style.backgroundColor = `rgb(0, 0, ${b})`;
+
+            // Update center pulse brightness
+            const brightness = (r + g + b) / (255 * 3);
+            centerPulse.style.background = `rgba(${r}, ${g}, ${b}, ${0.15 + brightness * 0.35})`;
+
+            // Update swatch and text displays
+            const rgbStr = `rgb(${r}, ${g}, ${b})`;
+            const hexStr = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+
+            swatch.style.backgroundColor = rgbStr;
+            rgbDisplay.textContent = rgbStr;
+            hexDisplay.textContent = hexStr;
+
+            // Contrast checker
+            const bgLum = relativeLuminance(r, g, b);
+            const whiteLum = 1.0;
+            const blackLum = 0.0;
+
+            // Pick whichever text color gives better contrast
+            const ratioWhite = contrastRatioCalc(whiteLum, bgLum);
+            const ratioBlack = contrastRatioCalc(blackLum, bgLum);
+            const useWhite = ratioWhite >= ratioBlack;
+            const bestRatio = useWhite ? ratioWhite : ratioBlack;
+
+            contrastPreview.style.backgroundColor = rgbStr;
+            contrastPreview.style.color = useWhite ? '#ffffff' : '#000000';
+
+            contrastRatio.textContent = `Ratio: ${bestRatio.toFixed(2)}:1`;
+
+            // AA normal text: 4.5:1, AAA normal text: 7:1
+            const passAA = bestRatio >= 4.5;
+            const passAAA = bestRatio >= 7;
+
+            badgeAA.className = `badge ${passAA ? 'badge-pass' : 'badge-fail'}`;
+            badgeAA.textContent = passAA ? 'AA PASS' : 'AA FAIL';
+            badgeAAA.className = `badge ${passAAA ? 'badge-pass' : 'badge-fail'}`;
+            badgeAAA.textContent = passAAA ? 'AAA PASS' : 'AAA FAIL';
+        }
+
+        redSlider.addEventListener('input', update);
+        greenSlider.addEventListener('input', update);
+        blueSlider.addEventListener('input', update);
+
+        // Initialize
+        update();
+    </script>
+</body>
+</html>
