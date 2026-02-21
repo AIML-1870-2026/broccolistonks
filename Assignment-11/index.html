@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Readable Explorer</title>
+  <style>
+    /* ── Reset & Base ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-r: 255; --bg-g: 255; --bg-b: 255;
+      --tx-r: 51;  --tx-g: 51;  --tx-b: 51;
+      --font-size: 18;
+      --bg-color: rgb(var(--bg-r), var(--bg-g), var(--bg-b));
+      --tx-color: rgb(var(--tx-r), var(--tx-g), var(--tx-b));
+      --surface: #ffffff;
+      --surface-alt: #f4f5f7;
+      --border: #e0e3e8;
+      --text-primary: #1a1a2e;
+      --text-secondary: #5a5f72;
+      --accent: #6366f1;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--surface-alt);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    header h1 span { color: var(--accent); }
+    header p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    /* ── Main Layout ───────────────────────────────────── */
+    .app {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      max-width: 1280px;
+      margin: 1.25rem auto;
+      padding: 0 1.25rem;
+    }
+
+    @media (min-width: 900px) {
+      .app { grid-template-columns: 380px 1fr; }
+    }
+
+    /* ── Card ──────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Fieldset / Color Group ─────────────────────────── */
+    fieldset {
+      border: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+    }
+    fieldset:last-of-type { margin-bottom: 0; }
+
+    legend {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    /* ── Slider Row ────────────────────────────────────── */
+    .slider-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 56px;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .slider-row label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface-alt);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+      cursor: grab;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+      cursor: grab;
+    }
+
+    /* Color-coded slider tracks */
+    .slider-row.red input[type="range"]   { accent-color: #ef4444; }
+    .slider-row.green input[type="range"] { accent-color: #22c55e; }
+    .slider-row.blue input[type="range"]  { accent-color: #3b82f6; }
+    .slider-row.red input[type="range"]::-webkit-slider-thumb   { background: #ef4444; }
+    .slider-row.green input[type="range"]::-webkit-slider-thumb { background: #22c55e; }
+    .slider-row.blue input[type="range"]::-webkit-slider-thumb  { background: #3b82f6; }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 0.3rem 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      text-align: center;
+      font-family: inherit;
+      background: var(--surface-alt);
+      color: var(--text-primary);
+    }
+    input[type="number"]:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    /* ── Hex Input ─────────────────────────────────────── */
+    .hex-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .hex-row label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .hex-row input[type="text"] {
+      width: 90px;
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-family: "SF Mono", "Fira Code", monospace;
+      background: var(--surface-alt);
+      color: var(--text-primary);
+    }
+    .hex-row input[type="text"]:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    /* ── Font Size Section ─────────────────────────────── */
+    .font-size-section {
+      border-top: 1px solid var(--border);
+      padding-top: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    /* ── Right Column ──────────────────────────────────── */
+    .right-col { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* ── Preview ───────────────────────────────────────── */
+    .preview {
+      background-color: var(--bg-color);
+      color: var(--tx-color);
+      font-size: calc(var(--font-size) * 1px);
+      border-radius: var(--radius);
+      padding: 2rem;
+      min-height: 260px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      transition: background-color 0.15s, color 0.15s, font-size 0.15s;
+    }
+    .preview h2 {
+      font-size: 1.4em;
+      margin-bottom: 0.75em;
+      font-weight: 700;
+    }
+    .preview p {
+      margin-bottom: 0.75em;
+      line-height: 1.7;
+    }
+
+    /* ── Analytics ─────────────────────────────────────── */
+    .analytics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .metric .label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 0.35rem;
+    }
+    .metric .value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── WCAG Badges ───────────────────────────────────── */
+    .wcag-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background 0.2s, color 0.2s;
+    }
+    .badge .icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
+    }
+
+    .badge.pass {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .badge.fail {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .badge-label { font-size: 0.7rem; color: inherit; opacity: 0.8; }
+    .badge-status { font-weight: 700; }
+
+    /* ── Footer ────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────── -->
+  <header>
+    <h1><span>Readable</span> Explorer</h1>
+    <p>Test color accessibility with real-time WCAG contrast analysis</p>
+  </header>
+
+  <!-- ── App Container ───────────────────────────────── -->
+  <div class="app" id="controls">
+
+    <!-- ── Left: Control Panel ─────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Color Controls</div>
+
+      <!-- Background Color -->
+      <fieldset>
+        <legend>
+          <span class="swatch" id="bg-swatch"></span>
+          Background Color
+        </legend>
+
+        <div class="slider-row red">
+          <label for="bg-r-slider">R</label>
+          <input type="range" id="bg-r-slider" min="0" max="255" value="255" aria-label="Background Red">
+          <input type="number" id="bg-r-num" min="0" max="255" value="255" aria-label="Background Red value">
+        </div>
+        <div class="slider-row green">
+          <label for="bg-g-slider">G</label>
+          <input type="range" id="bg-g-slider" min="0" max="255" value="255" aria-label="Background Green">
+          <input type="number" id="bg-g-num" min="0" max="255" value="255" aria-label="Background Green value">
+        </div>
+        <div class="slider-row blue">
+          <label for="bg-b-slider">B</label>
+          <input type="range" id="bg-b-slider" min="0" max="255" value="255" aria-label="Background Blue">
+          <input type="number" id="bg-b-num" min="0" max="255" value="255" aria-label="Background Blue value">
+        </div>
+        <div class="hex-row">
+          <label for="bg-hex">HEX</label>
+          <input type="text" id="bg-hex" value="#FFFFFF" maxlength="7" aria-label="Background Hex color">
+        </div>
+      </fieldset>
+
+      <!-- Text Color -->
+      <fieldset>
+        <legend>
+          <span class="swatch" id="tx-swatch"></span>
+          Text Color
+        </legend>
+
+        <div class="slider-row red">
+          <label for="tx-r-slider">R</label>
+          <input type="range" id="tx-r-slider" min="0" max="255" value="51" aria-label="Text Red">
+          <input type="number" id="tx-r-num" min="0" max="255" value="51" aria-label="Text Red value">
+        </div>
+        <div class="slider-row green">
+          <label for="tx-g-slider">G</label>
+          <input type="range" id="tx-g-slider" min="0" max="255" value="51" aria-label="Text Green">
+          <input type="number" id="tx-g-num" min="0" max="255" value="51" aria-label="Text Green value">
+        </div>
+        <div class="slider-row blue">
+          <label for="tx-b-slider">B</label>
+          <input type="range" id="tx-b-slider" min="0" max="255" value="51" aria-label="Text Blue">
+          <input type="number" id="tx-b-num" min="0" max="255" value="51" aria-label="Text Blue value">
+        </div>
+        <div class="hex-row">
+          <label for="tx-hex">HEX</label>
+          <input type="text" id="tx-hex" value="#333333" maxlength="7" aria-label="Text Hex color">
+        </div>
+      </fieldset>
+
+      <!-- Font Size -->
+      <section class="font-size-section">
+        <div class="card-title">Text Size</div>
+        <div class="slider-row">
+          <label for="fs-slider">Px</label>
+          <input type="range" id="fs-slider" min="12" max="80" value="18" aria-label="Font size">
+          <input type="number" id="fs-num" min="12" max="80" value="18" aria-label="Font size value">
+        </div>
+      </section>
+    </div>
+
+    <!-- ── Right: Preview & Analytics ──────────────────── -->
+    <div class="right-col">
+
+      <!-- Live Preview -->
+      <section class="preview" id="preview" aria-live="polite">
+        <h2>Readability Preview</h2>
+        <p>The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet and is a classic test for typography and readability.</p>
+        <p>Good contrast between text and background colors is essential for accessibility. Users with low vision, color blindness, or situational impairments depend on sufficient contrast to read content comfortably.</p>
+        <p>Adjust the sliders on the left to experiment with different color combinations and see how they affect readability in real time.</p>
+      </section>
+
+      <!-- Analytics Row -->
+      <div class="analytics">
+        <div class="metric">
+          <div class="label">Contrast Ratio</div>
+          <output class="value" id="ratio-display">12.63:1</output>
+        </div>
+        <div class="metric">
+          <div class="label">Font Size</div>
+          <output class="value" id="size-display">18px</output>
+        </div>
+      </div>
+
+      <!-- WCAG Compliance -->
+      <div class="card">
+        <div class="card-title">WCAG AA Compliance</div>
+        <div class="wcag-grid">
+          <div class="badge pass" id="wcag-normal">
+            <span class="icon">&#10003;</span>
+            <div>
+              <div class="badge-label">Normal Text</div>
+              <div class="badge-status">PASS</div>
+            </div>
+          </div>
+          <div class="badge pass" id="wcag-large">
+            <span class="icon">&#10003;</span>
+            <div>
+              <div class="badge-label">Large Text</div>
+              <div class="badge-status">PASS</div>
+            </div>
+          </div>
+          <div class="badge pass" id="wcag-normal-aaa">
+            <span class="icon">&#10003;</span>
+            <div>
+              <div class="badge-label">Normal Text (AAA)</div>
+              <div class="badge-status">PASS</div>
+            </div>
+          </div>
+          <div class="badge pass" id="wcag-large-aaa">
+            <span class="icon">&#10003;</span>
+            <div>
+              <div class="badge-label">Large Text (AAA)</div>
+              <div class="badge-status">PASS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Readable Explorer &mdash; AIML 1870</footer>
+
+  <script>
+    // ── State ──────────────────────────────────────────
+    const state = {
+      bg: { r: 255, g: 255, b: 255 },
+      tx: { r: 51,  g: 51,  b: 51  },
+      fontSize: 18
+    };
+
+    // ── DOM References ────────────────────────────────
+    const $ = id => document.getElementById(id);
+
+    const els = {
+      bgSliders: { r: $('bg-r-slider'), g: $('bg-g-slider'), b: $('bg-b-slider') },
+      bgNums:    { r: $('bg-r-num'),    g: $('bg-g-num'),    b: $('bg-b-num')    },
+      bgHex:     $('bg-hex'),
+      bgSwatch:  $('bg-swatch'),
+
+      txSliders: { r: $('tx-r-slider'), g: $('tx-g-slider'), b: $('tx-b-slider') },
+      txNums:    { r: $('tx-r-num'),    g: $('tx-g-num'),    b: $('tx-b-num')    },
+      txHex:     $('tx-hex'),
+      txSwatch:  $('tx-swatch'),
+
+      fsSlider:  $('fs-slider'),
+      fsNum:     $('fs-num'),
+
+      preview:      $('preview'),
+      ratioDisplay: $('ratio-display'),
+      sizeDisplay:  $('size-display'),
+
+      wcagNormal:    $('wcag-normal'),
+      wcagLarge:     $('wcag-large'),
+      wcagNormalAAA: $('wcag-normal-aaa'),
+      wcagLargeAAA:  $('wcag-large-aaa')
+    };
+
+    // ── Helpers ───────────────────────────────────────
+
+    /** Clamp a value between min and max */
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    /** Convert an {r, g, b} object (0–255) to a hex string like #FF00AA */
+    function rgbToHex({ r, g, b }) {
+      return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0').toUpperCase()).join('');
+    }
+
+    /** Parse a hex string like #FF00AA into {r, g, b} (0–255). Returns null on failure. */
+    function hexToRgb(hex) {
+      const m = hex.match(/^#?([0-9a-f]{6})$/i);
+      if (!m) return null;
+      const v = parseInt(m[1], 16);
+      return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+    }
+
+    // ── Luminance & Contrast ──────────────────────────
+    //
+    // Relative luminance is defined by WCAG 2.x as:
+    //   L = 0.2126 * R_lin + 0.7152 * G_lin + 0.0722 * B_lin
+    //
+    // where each sRGB channel is first normalised to 0–1, then
+    // linearised with the sRGB transfer function:
+    //   if c <= 0.04045  →  c / 12.92
+    //   else              →  ((c + 0.055) / 1.055) ^ 2.4
+
+    function linearize(c) {
+      // c is 0–1 sRGB value
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    function luminance({ r, g, b }) {
+      const rLin = linearize(r / 255);
+      const gLin = linearize(g / 255);
+      const bLin = linearize(b / 255);
+      return 0.2126 * rLin + 0.7152 * gLin + 0.0722 * bLin;
+    }
+
+    // Contrast ratio = (L_lighter + 0.05) / (L_darker + 0.05)
+    function contrastRatio(color1, color2) {
+      const l1 = luminance(color1);
+      const l2 = luminance(color2);
+      const lighter = Math.max(l1, l2);
+      const darker  = Math.min(l1, l2);
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    // ── Update Pipeline ───────────────────────────────
+
+    function updateAll() {
+      const root = document.documentElement.style;
+
+      // 1. Push state into CSS variables for the preview
+      root.setProperty('--bg-r', state.bg.r);
+      root.setProperty('--bg-g', state.bg.g);
+      root.setProperty('--bg-b', state.bg.b);
+      root.setProperty('--tx-r', state.tx.r);
+      root.setProperty('--tx-g', state.tx.g);
+      root.setProperty('--tx-b', state.tx.b);
+      root.setProperty('--font-size', state.fontSize);
+
+      // 2. Sync sliders ↔ number inputs ↔ hex
+      ['r', 'g', 'b'].forEach(ch => {
+        els.bgSliders[ch].value = state.bg[ch];
+        els.bgNums[ch].value   = state.bg[ch];
+        els.txSliders[ch].value = state.tx[ch];
+        els.txNums[ch].value   = state.tx[ch];
+      });
+      els.bgHex.value = rgbToHex(state.bg);
+      els.txHex.value = rgbToHex(state.tx);
+
+      els.bgSwatch.style.background = rgbToHex(state.bg);
+      els.txSwatch.style.background = rgbToHex(state.tx);
+
+      els.fsSlider.value = state.fontSize;
+      els.fsNum.value    = state.fontSize;
+
+      // 3. Calculate contrast
+      const ratio = contrastRatio(state.bg, state.tx);
+      els.ratioDisplay.textContent = ratio.toFixed(2) + ':1';
+      els.sizeDisplay.textContent  = state.fontSize + 'px';
+
+      // 4. WCAG evaluation
+      //    AA Normal  ≥ 4.5:1
+      //    AA Large   ≥ 3.0:1   (large = ≥ 24px, or ≥ 18.66px bold)
+      //    AAA Normal ≥ 7.0:1
+      //    AAA Large  ≥ 4.5:1
+      setBadge(els.wcagNormal,    ratio >= 4.5, 'Normal Text');
+      setBadge(els.wcagLarge,     ratio >= 3.0, 'Large Text');
+      setBadge(els.wcagNormalAAA, ratio >= 7.0, 'Normal Text (AAA)');
+      setBadge(els.wcagLargeAAA,  ratio >= 4.5, 'Large Text (AAA)');
+    }
+
+    function setBadge(el, pass, label) {
+      el.className = 'badge ' + (pass ? 'pass' : 'fail');
+      el.innerHTML =
+        `<span class="icon">${pass ? '&#10003;' : '&#10007;'}</span>
+         <div>
+           <div class="badge-label">${label}</div>
+           <div class="badge-status">${pass ? 'PASS' : 'FAIL'}</div>
+         </div>`;
+    }
+
+    // ── Event Delegation ──────────────────────────────
+    // A single "input" listener on the parent captures all slider/number changes.
+
+    document.getElementById('controls').addEventListener('input', e => {
+      const id = e.target.id;
+      const val = e.target.value;
+
+      // Background RGB
+      if (id.startsWith('bg-r')) state.bg.r = clamp(+val, 0, 255);
+      else if (id.startsWith('bg-g')) state.bg.g = clamp(+val, 0, 255);
+      else if (id.startsWith('bg-b')) state.bg.b = clamp(+val, 0, 255);
+
+      // Text RGB
+      else if (id.startsWith('tx-r')) state.tx.r = clamp(+val, 0, 255);
+      else if (id.startsWith('tx-g')) state.tx.g = clamp(+val, 0, 255);
+      else if (id.startsWith('tx-b')) state.tx.b = clamp(+val, 0, 255);
+
+      // Hex inputs
+      else if (id === 'bg-hex') {
+        const rgb = hexToRgb(val);
+        if (rgb) { state.bg = rgb; }
+        else return; // don't update while the user is still typing an invalid hex
+      }
+      else if (id === 'tx-hex') {
+        const rgb = hexToRgb(val);
+        if (rgb) { state.tx = rgb; }
+        else return;
+      }
+
+      // Font size
+      else if (id.startsWith('fs-')) state.fontSize = clamp(+val, 12, 80);
+
+      updateAll();
+    });
+
+    // ── Init ──────────────────────────────────────────
+    updateAll();
+  </script>
+</body>
+</html>
