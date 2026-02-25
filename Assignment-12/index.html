@@ -435,6 +435,30 @@
       z-index: 2;
     }
 
+    /* ── Split Hand Columns ─────────────────────────────────────── */
+    .split-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1.5px solid transparent;
+      transition: opacity .3s, border-color .3s, box-shadow .3s;
+    }
+    .split-col.active {
+      border-color: rgba(245,224,160,.7);
+      box-shadow: 0 0 14px rgba(245,224,160,.18);
+    }
+    .split-col.done { opacity: .45; }
+    .split-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(245,224,160,.8);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
     @media (max-width: 960px) {
       #blackjack-table { width: 98vw; height: auto; border-radius: 20px; padding: 16px; }
       #control-dock    { width: 98vw; border-radius: 0; }
@@ -534,16 +558,20 @@ const RANKS    = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const NUM_DECKS = 6;
 
 const GameState = {
-  shoe:         [],
-  playerHand:   [],
-  dealerHand:   [],
-  bankroll:     1000,
-  currentBet:   0,
-  selectedChip: 25,
-  phase:        'betting',   // betting | player | dealer | over
-  insuranceBet: 0,
-  splitHands:   [],
-  dealtCount:   0
+  shoe:          [],
+  playerHand:    [],
+  dealerHand:    [],
+  bankroll:      1000,
+  currentBet:    0,
+  selectedChip:  25,
+  phase:         'betting',    // betting | player | dealer | over
+  insuranceBet:  0,
+  splitHands:    [],   // array of additional hands  (one entry per split)
+  splitBets:     [],   // matching bet amount for each split hand
+  splitIndex:    0,    // 0 = playerHand active; 1+ = splitHands[n-1] active
+  splitFromAces: false,// pair of aces → one card each, no re-hit
+  bustFlags:     [],   // bustFlags[i] = true when hand i busted in player phase
+  dealtCount:    0
 };
 
 /* ════════════════════════════════════════════════════════════
@@ -727,42 +755,121 @@ function declineInsurance() {
 }
 
 /* ════════════════════════════════════════════════════════════
+   SPLIT HAND HELPERS
+   ════════════════════════════════════════════════════════════ */
+function getActiveHand() {
+  return GameState.splitIndex === 0
+    ? GameState.playerHand
+    : GameState.splitHands[GameState.splitIndex - 1];
+}
+
+function getActiveBet() {
+  return GameState.splitIndex === 0
+    ? GameState.currentBet
+    : GameState.splitBets[GameState.splitIndex - 1];
+}
+
+function setActiveBet(val) {
+  if (GameState.splitIndex === 0) GameState.currentBet = val;
+  else GameState.splitBets[GameState.splitIndex - 1] = val;
+}
+
+// Move to the next split hand, or kick off dealer play when all hands are done
+function advanceHand() {
+  const total = 1 + GameState.splitHands.length;
+  if (GameState.splitIndex < total - 1) {
+    GameState.splitIndex++;
+    render();
+  } else {
+    GameState.phase = 'dealer';
+    revealHole();
+    dealerPlay();
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
    PLAYER ACTIONS
    ════════════════════════════════════════════════════════════ */
 function hit() {
   if (GameState.phase !== 'player') return;
-  GameState.playerHand.push({ ...drawCard(), faceUp: true });
+  if (GameState.splitFromAces) return;        // aces get exactly one card — no extra hits
+  const hand = getActiveHand();
+  hand.push({ ...drawCard(), faceUp: true });
   render();
-  if (isBust(GameState.playerHand)) { revealHole(); endRound('bust'); }
+  if (isBust(hand)) {
+    if (GameState.splitHands.length > 0) {
+      GameState.bustFlags[GameState.splitIndex] = true;
+      advanceHand();
+    } else {
+      revealHole();
+      endRound('bust');
+    }
+  }
 }
 
 function stand() {
   if (GameState.phase !== 'player') return;
-  GameState.phase = 'dealer';
-  revealHole();
-  dealerPlay();
+  if (GameState.splitHands.length > 0) {
+    advanceHand();
+  } else {
+    GameState.phase = 'dealer';
+    revealHole();
+    dealerPlay();
+  }
 }
 
 function doubleDown() {
-  if (GameState.phase !== 'player' || GameState.playerHand.length !== 2) return;
-  const extra = Math.min(GameState.currentBet, GameState.bankroll);
-  GameState.bankroll   -= extra;
-  GameState.currentBet += extra;
-  GameState.playerHand.push({ ...drawCard(), faceUp: true });
+  if (GameState.phase !== 'player') return;
+  if (GameState.splitFromAces) return;
+  const hand = getActiveHand();
+  const bet  = getActiveBet();
+  if (hand.length !== 2) return;
+  const extra = Math.min(bet, GameState.bankroll);
+  GameState.bankroll -= extra;
+  setActiveBet(bet + extra);
+  hand.push({ ...drawCard(), faceUp: true });
   render();
-  if (isBust(GameState.playerHand)) { revealHole(); endRound('bust'); }
-  else stand();
+  if (isBust(hand)) {
+    if (GameState.splitHands.length > 0) {
+      GameState.bustFlags[GameState.splitIndex] = true;
+      advanceHand();
+    } else {
+      revealHole();
+      endRound('bust');
+    }
+  } else {
+    // Forced stand after double
+    if (GameState.splitHands.length > 0) advanceHand();
+    else { GameState.phase = 'dealer'; revealHole(); dealerPlay(); }
+  }
 }
 
 function splitHand() {
   if (GameState.phase !== 'player' || GameState.playerHand.length !== 2) return;
+  if (GameState.splitHands.length > 0) return;   // no re-splits
   const [c1, c2] = GameState.playerHand;
   if (cardNumVal(c1.rank) !== cardNumVal(c2.rank)) return;
   if (GameState.bankroll < GameState.currentBet) return;
-  GameState.bankroll -= GameState.currentBet;
-  GameState.playerHand  = [c1, { ...drawCard(), faceUp: true }];
-  GameState.splitHands  = [[c2, { ...drawCard(), faceUp: true }]];
+
+  const isAceSplit = c1.rank === 'A';
+  const splitBet   = GameState.currentBet;
+  GameState.bankroll -= splitBet;
+
+  // Each original card gets one fresh card to form its new hand
+  GameState.playerHand   = [c1, { ...drawCard(), faceUp: true }];
+  GameState.splitHands   = [[c2, { ...drawCard(), faceUp: true }]];
+  GameState.splitBets    = [splitBet];
+  GameState.splitIndex   = 0;
+  GameState.splitFromAces = isAceSplit;
+  GameState.bustFlags    = [false, false];
   render();
+
+  // Aces: one card each, no further action — go straight to dealer
+  if (isAceSplit) {
+    GameState.phase = 'dealer';
+    revealHole();
+    dealerPlay();
+  }
 }
 
 function cardNumVal(rank) {
@@ -797,11 +904,64 @@ function dealerPlay() {
    ROUND RESOLUTION
    ════════════════════════════════════════════════════════════ */
 function resolveRound() {
+  if (GameState.splitHands.length > 0) { resolveSplitRound(); return; }
   const pv = handValue(GameState.playerHand);
   const dv = handValue(GameState.dealerHand);
   if      (dv > 21 || pv > dv) endRound('win');
   else if (pv < dv)            endRound('lose');
   else                         endRound('push');
+}
+
+function resolveSplitRound() {
+  GameState.phase = 'over';
+
+  // Insurance payout
+  if (GameState.insuranceBet > 0 && isBlackjack(GameState.dealerHand))
+    GameState.bankroll += GameState.insuranceBet * 3;
+
+  const dv         = handValue(GameState.dealerHand);
+  const dealerBust = dv > 21;
+  const allHands   = [GameState.playerHand, ...GameState.splitHands];
+  const allBets    = [GameState.currentBet, ...GameState.splitBets];
+
+  let net = 0;
+  const lines = [];
+
+  allHands.forEach((hand, i) => {
+    const bet = allBets[i];
+
+    if (GameState.bustFlags[i]) {
+      // Already lost — bets were deducted at split time, nothing to pay back
+      lines.push(`Hand ${i + 1}: Bust −$${bet}`);
+      net -= bet;
+      return;
+    }
+
+    const pv = handValue(hand);
+    // A 21 on a split ace pays 1:1, not 3:2 (standard casino rule)
+    if (dealerBust || pv > dv) {
+      GameState.bankroll += bet * 2;
+      net += bet;
+      lines.push(`Hand ${i + 1}: Win +$${bet}`);
+    } else if (pv === dv) {
+      GameState.bankroll += bet;
+      lines.push(`Hand ${i + 1}: Push`);
+    } else {
+      net -= bet;
+      lines.push(`Hand ${i + 1}: Lose −$${bet}`);
+    }
+  });
+
+  GameState.currentBet = 0;
+  render();
+
+  const netStr   = net >= 0 ? `+$${net}` : `−$${Math.abs(net)}`;
+  const msgText  = net > 0  ? 'Ye Win, Matey! ⚓' : net < 0 ? 'Davy Jones Wins! ☠' : "Dead Man's Draw";
+  const msgClass = net > 0  ? 'msg-win'            : net < 0 ? 'msg-lose'            : 'msg-push';
+  const msgSub   = lines.join('  ·  ') + `  (${netStr})`;
+
+  showMessage(msgText, msgSub, msgClass);
+  setTimeout(() => resetGame(), 3400);
 }
 
 function endRound(outcome) {
@@ -868,12 +1028,16 @@ function hideMessage() {
 
 function resetGame() {
   hideMessage();
-  GameState.phase       = 'betting';
-  GameState.playerHand  = [];
-  GameState.dealerHand  = [];
-  GameState.currentBet  = 0;
+  GameState.phase        = 'betting';
+  GameState.playerHand   = [];
+  GameState.dealerHand   = [];
+  GameState.currentBet   = 0;
   GameState.insuranceBet = 0;
-  GameState.splitHands  = [];
+  GameState.splitHands   = [];
+  GameState.splitBets    = [];
+  GameState.splitIndex   = 0;
+  GameState.splitFromAces = false;
+  GameState.bustFlags    = [];
   if (GameState.bankroll <= 0) {
     GameState.bankroll = 1000;
     showMessage('Marooned!', "A kind soul refills yer chest — $1,000", 'msg-push');
@@ -928,28 +1092,71 @@ function render() {
   document.getElementById('dealer-value').textContent =
     GameState.dealerHand.length ? dVal : '—';
 
-  // Player hand
+  // Player hand(s)
   const pZone = document.getElementById('player-hand');
   pZone.innerHTML = '';
-  for (const card of GameState.playerHand) pZone.appendChild(createCardEl(card));
-  const pVal = handDisplayValue(GameState.playerHand, true);
-  document.getElementById('player-value').textContent =
-    GameState.playerHand.length ? pVal : '—';
+  const totalPlayerBet = GameState.currentBet + GameState.splitBets.reduce((a, b) => a + b, 0);
+
+  if (GameState.splitHands.length === 0) {
+    // ── Single hand ─────────────────────────────────────────────
+    pZone.style.gap = '6px';
+    for (const card of GameState.playerHand) pZone.appendChild(createCardEl(card));
+    const pVal = handDisplayValue(GameState.playerHand, true);
+    document.getElementById('player-value').textContent =
+      GameState.playerHand.length ? pVal : '—';
+  } else {
+    // ── Split hands — render side by side ───────────────────────
+    pZone.style.gap = '24px';
+    const allHands = [GameState.playerHand, ...GameState.splitHands];
+    allHands.forEach((hand, i) => {
+      const col = document.createElement('div');
+      const isActive = (i === GameState.splitIndex) && GameState.phase === 'player';
+      const isDone   = GameState.bustFlags[i] || (GameState.phase !== 'player' && i < GameState.splitIndex);
+      col.className = 'split-col' + (isActive ? ' active' : isDone ? ' done' : '');
+
+      if (isActive) {
+        const lbl = document.createElement('div');
+        lbl.className = 'split-label';
+        lbl.textContent = '▶ Playing';
+        col.appendChild(lbl);
+      }
+
+      const row = document.createElement('div');
+      row.className = 'hand-row';
+      for (const card of hand) row.appendChild(createCardEl(card));
+
+      const badge = document.createElement('div');
+      badge.className = 'hand-value-badge';
+      const hv = handDisplayValue(hand, true);
+      badge.textContent = GameState.bustFlags[i] ? 'Bust' : hv;
+      if (GameState.bustFlags[i]) badge.style.color = '#e74c3c';
+
+      col.appendChild(row);
+      col.appendChild(badge);
+      pZone.appendChild(col);
+    });
+    document.getElementById('player-value').textContent = '';
+  }
 
   // Bet / balance
-  document.getElementById('bet-display').textContent     = '$' + GameState.currentBet;
+  document.getElementById('bet-display').textContent     = '$' + totalPlayerBet;
   document.getElementById('balance-display').textContent = '$' + GameState.bankroll;
 
   // Button states
-  const betting = GameState.phase === 'betting';
-  const playing = GameState.phase === 'player';
+  const betting    = GameState.phase === 'betting';
+  const playing    = GameState.phase === 'player';
+  const activeHand = getActiveHand();
+  const activeBet  = getActiveBet();
+
   document.getElementById('btn-deal').disabled   = !betting || GameState.currentBet === 0;
   document.getElementById('btn-clear').disabled  = !betting;
-  document.getElementById('btn-hit').disabled    = !playing;
+  document.getElementById('btn-hit').disabled    = !playing || GameState.splitFromAces;
   document.getElementById('btn-stand').disabled  = !playing;
   document.getElementById('btn-double').disabled =
-    !(playing && GameState.playerHand.length === 2 && GameState.bankroll >= GameState.currentBet);
+    !(playing && !GameState.splitFromAces && activeHand.length === 2 && GameState.bankroll >= activeBet);
+
   const canSplit = playing
+    && GameState.splitHands.length === 0       // no re-splits
     && GameState.playerHand.length === 2
     && cardNumVal(GameState.playerHand[0].rank) === cardNumVal(GameState.playerHand[1].rank)
     && GameState.bankroll >= GameState.currentBet;
