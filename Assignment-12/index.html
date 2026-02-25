@@ -10,7 +10,12 @@
 
     body {
       font-family: 'Georgia', serif;
-      background: linear-gradient(170deg, #07111f 0%, #0d1e36 50%, #050e1a 100%);
+      /* Dark treasure-cave / ship-hold atmosphere */
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(80,40,0,.35) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 50%, rgba(60,20,0,.3)  0%, transparent 55%),
+        radial-gradient(ellipse at 50% 90%, rgba(100,60,0,.2) 0%, transparent 45%),
+        linear-gradient(170deg, #150900 0%, #1e0e02 45%, #0e0600 100%);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -18,26 +23,22 @@
       overflow-y: auto;
     }
 
-    /* Night-sky stars */
-    body::before {
-      content: '';
+    /* ── Floating Treasure Items ────────────────────────────────── */
+    .treasure {
       position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(1px   1px   at  8% 12%, rgba(255,255,255,.7) 0%, transparent 100%),
-        radial-gradient(1.5px 1.5px at 22%  4%, rgba(255,255,255,.5) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 40%  8%, rgba(255,255,255,.6) 0%, transparent 100%),
-        radial-gradient(2px   2px   at 55%  3%, rgba(255,255,255,.4) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 70% 10%, rgba(255,255,255,.7) 0%, transparent 100%),
-        radial-gradient(1.5px 1.5px at 85%  6%, rgba(255,255,255,.5) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 95% 15%, rgba(255,255,255,.6) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 15% 88%, rgba(255,255,255,.4) 0%, transparent 100%),
-        radial-gradient(1.5px 1.5px at 75% 92%, rgba(255,255,255,.5) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 90% 85%, rgba(255,255,255,.6) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 33% 75%, rgba(255,255,255,.35) 0%, transparent 100%),
-        radial-gradient(1px   1px   at 60% 80%, rgba(255,255,255,.45) 0%, transparent 100%);
+      font-size: 22px;
       pointer-events: none;
+      user-select: none;
       z-index: 0;
+      opacity: 0;
+      animation: treasureFloat var(--dur, 6s) ease-in-out var(--delay, 0s) infinite alternate;
+      filter: drop-shadow(0 0 6px var(--glow, rgba(255,215,0,.5)));
+    }
+    @keyframes treasureFloat {
+      0%   { opacity: 0;    transform: translateY(12px)  rotate(var(--rot0, -8deg))  scale(.85); }
+      15%  { opacity: var(--op, .55); }
+      85%  { opacity: var(--op, .55); }
+      100% { opacity: 0;    transform: translateY(-12px) rotate(var(--rot1,  8deg))  scale(1.05); }
     }
 
     /* ── Table Shell — Wood Planks ──────────────────────────────── */
@@ -961,6 +962,82 @@ function render() {
     c.style.pointerEvents = betting ? 'auto'    : 'none';
   });
 }
+
+/* ════════════════════════════════════════════════════════════
+   TREASURE BACKGROUND SCATTER
+   ════════════════════════════════════════════════════════════ */
+(function scatterTreasure() {
+  const pool = [
+    // diamonds
+    { em: '💎', glow: 'rgba(100,200,255,.7)', op: .65 },
+    { em: '💎', glow: 'rgba(100,200,255,.7)', op: .5  },
+    // rubies / red gems
+    { em: '❤️‍🔥', glow: 'rgba(255,60,60,.7)',  op: .55 },
+    { em: '♦',  glow: 'rgba(220,50,50,.8)',   op: .6,  color: '#e03030', size: '28px' },
+    { em: '♦',  glow: 'rgba(200,30,30,.7)',   op: .5,  color: '#c81818', size: '20px' },
+    // emeralds
+    { em: '♦',  glow: 'rgba(30,200,80,.7)',   op: .6,  color: '#20c050', size: '26px' },
+    { em: '♦',  glow: 'rgba(20,180,60,.6)',   op: .5,  color: '#18a040', size: '18px' },
+    // gold coins & bars
+    { em: '🪙', glow: 'rgba(255,200,0,.7)',   op: .7  },
+    { em: '🪙', glow: 'rgba(255,200,0,.7)',   op: .6  },
+    { em: '🪙', glow: 'rgba(255,200,0,.65)',  op: .55 },
+    { em: '💰', glow: 'rgba(255,180,0,.65)',  op: .6  },
+    { em: '💰', glow: 'rgba(255,180,0,.6)',   op: .5  },
+    // gold bars (styled rectangles)
+    { em: '▬',  glow: 'rgba(218,165,32,.8)',  op: .5,  color: '#DAA520', size: '30px' },
+    { em: '▬',  glow: 'rgba(218,165,32,.7)',  op: .4,  color: '#c89010', size: '22px' },
+    // jeweled rings & gems
+    { em: '💍', glow: 'rgba(180,100,255,.7)', op: .6  },
+    { em: '💍', glow: 'rgba(180,100,255,.65)',op: .5  },
+    // sapphires (blue diamonds)
+    { em: '♦',  glow: 'rgba(30,100,255,.8)',  op: .55, color: '#2060e0', size: '24px' },
+    { em: '♦',  glow: 'rgba(20,80,200,.7)',   op: .45, color: '#1850c0', size: '16px' },
+    // treasure chests & misc
+    { em: '⚜️', glow: 'rgba(218,165,32,.7)',  op: .45 },
+    { em: '⚜️', glow: 'rgba(218,165,32,.65)', op: .4  },
+    { em: '🏺', glow: 'rgba(180,100,30,.6)',  op: .45 },
+    { em: '🪬', glow: 'rgba(100,180,255,.6)', op: .4  },
+    // extra coins
+    { em: '🪙', glow: 'rgba(255,200,0,.7)',   op: .5  },
+    { em: '💎', glow: 'rgba(100,200,255,.7)', op: .45 },
+  ];
+
+  pool.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'treasure';
+    el.textContent = item.em;
+
+    // Random position — favor edges so the table stays clear
+    const side = Math.random();
+    let x, y;
+    if (side < 0.25)      { x = Math.random() * 14;       y = Math.random() * 100; }   // left strip
+    else if (side < 0.5)  { x = 86 + Math.random() * 14;  y = Math.random() * 100; }   // right strip
+    else if (side < 0.72) { x = 14 + Math.random() * 72;  y = Math.random() * 10; }    // top
+    else                  { x = 14 + Math.random() * 72;  y = 90 + Math.random() * 10;}// bottom
+
+    el.style.left  = x.toFixed(1) + '%';
+    el.style.top   = y.toFixed(1) + '%';
+
+    // Per-item custom properties for the animation
+    const dur   = 4 + Math.random() * 6;
+    const delay = Math.random() * -8;  // negative = start mid-cycle for stagger
+    const rot0  = (-12 + Math.random() * 12).toFixed(1) + 'deg';
+    const rot1  = (  0 + Math.random() * 16).toFixed(1) + 'deg';
+
+    el.style.setProperty('--dur',   dur.toFixed(1) + 's');
+    el.style.setProperty('--delay', delay.toFixed(1) + 's');
+    el.style.setProperty('--rot0',  rot0);
+    el.style.setProperty('--rot1',  rot1);
+    el.style.setProperty('--glow',  item.glow);
+    el.style.setProperty('--op',    item.op);
+
+    if (item.color) el.style.color     = item.color;
+    if (item.size)  el.style.fontSize  = item.size;
+
+    document.body.appendChild(el);
+  });
+})();
 
 /* ════════════════════════════════════════════════════════════
    INIT
