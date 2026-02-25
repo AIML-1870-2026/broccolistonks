@@ -647,7 +647,9 @@ function drawCard() {
 function handValue(hand) {
   let total = 0, aces = 0;
   for (const card of hand) {
-    if (card.faceUp === false) continue;
+    // Only skip the dealer's true hole card (hidden: true).
+    // Player face-down doubled cards have faceUp:false but hidden:undefined — always count them.
+    if (card.hidden) continue;
     if (card.rank === 'A')                        { aces++; total += 11; }
     else if (['J','Q','K'].includes(card.rank))     total += 10;
     else                                            total += parseInt(card.rank);
@@ -713,7 +715,7 @@ function deal() {
   ];
   GameState.dealerHand = [
     { ...drawCard(), faceUp: true  },
-    { ...drawCard(), faceUp: false }   // hole card
+    { ...drawCard(), faceUp: false, hidden: true }   // hole card — hidden from handValue
   ];
   GameState.insuranceBet = 0;
   render();
@@ -824,10 +826,14 @@ function doubleDown() {
   const hand = getActiveHand();
   const bet  = getActiveBet();
   if (hand.length !== 2) return;
+  // Bicycle rules: double only allowed on two-card totals of 9, 10, or 11
+  const total = handValue(hand);
+  if (total < 9 || total > 11) return;
   const extra = Math.min(bet, GameState.bankroll);
   GameState.bankroll -= extra;
   setActiveBet(bet + extra);
-  hand.push({ ...drawCard(), faceUp: true });
+  // Card dealt face-down; revealed at settlement ("not turned up until bets are settled")
+  hand.push({ ...drawCard(), faceUp: false });
   render();
   if (isBust(hand)) {
     if (GameState.splitHands.length > 0) {
@@ -882,9 +888,21 @@ function cardNumVal(rank) {
    DEALER AI
    ════════════════════════════════════════════════════════════ */
 function revealHole() {
-  const hole = GameState.dealerHand.find(c => c.faceUp === false);
-  if (hole) hole.faceUp = true;
+  const hole = GameState.dealerHand.find(c => c.hidden);
+  if (hole) { hole.faceUp = true; hole.hidden = false; }
   render();
+}
+
+// Flip any face-down player cards (doubled-down cards) at settlement time
+function revealDoubledCards() {
+  const allHands = [GameState.playerHand, ...GameState.splitHands];
+  let anyFlipped = false;
+  allHands.forEach(hand => {
+    hand.forEach(card => {
+      if (!card.hidden && card.faceUp === false) { card.faceUp = true; anyFlipped = true; }
+    });
+  });
+  if (anyFlipped) render();
 }
 
 function dealerPlay() {
@@ -895,6 +913,7 @@ function dealerPlay() {
       render();
     } else {
       clearInterval(tick);
+      revealDoubledCards();   // flip any face-down player doubled cards before settling
       resolveRound();
     }
   }, 600);
@@ -913,6 +932,7 @@ function resolveRound() {
 }
 
 function resolveSplitRound() {
+  revealDoubledCards();
   GameState.phase = 'over';
 
   // Insurance payout
@@ -965,6 +985,7 @@ function resolveSplitRound() {
 }
 
 function endRound(outcome) {
+  revealDoubledCards();
   GameState.phase = 'over';
 
   // Insurance payout
@@ -1152,8 +1173,11 @@ function render() {
   document.getElementById('btn-clear').disabled  = !betting;
   document.getElementById('btn-hit').disabled    = !playing || GameState.splitFromAces;
   document.getElementById('btn-stand').disabled  = !playing;
+  const activeTotal = handValue(activeHand);
   document.getElementById('btn-double').disabled =
-    !(playing && !GameState.splitFromAces && activeHand.length === 2 && GameState.bankroll >= activeBet);
+    !(playing && !GameState.splitFromAces && activeHand.length === 2
+      && GameState.bankroll >= activeBet
+      && activeTotal >= 9 && activeTotal <= 11);
 
   const canSplit = playing
     && GameState.splitHands.length === 0       // no re-splits
