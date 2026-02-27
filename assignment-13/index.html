@@ -167,12 +167,12 @@
   <!-- MENU -->
   <div class="screen" id="s-menu">
     <button class="qb" id="qb-lava"   onclick="startGame('lava')">
-      <span class="ic">❄️</span>
+      <span class="ic">🔥</span>
       <span class="qname">LAVA</span>
       <span class="qply">You: ❄️ Ice Cube</span>
     </button>
     <button class="qb" id="qb-ice"    onclick="startGame('ice')">
-      <span class="ic">🔥</span>
+      <span class="ic">❄️</span>
       <span class="qname">ICE</span>
       <span class="qply">You: 🔥 Fire Ball</span>
     </button>
@@ -669,7 +669,16 @@ function drawPlayer(){
 
   const pt=wKey;
   if(pt==='lava'){
-    // Fire ball
+    // Ice cube (opposite of lava)
+    ctx.shadowColor='#88ddff'; ctx.shadowBlur=18;
+    ctx.fillStyle='rgba(175,225,255,0.88)';
+    rr(ctx,-dw/2,-dh/2,dw,dh,5); ctx.fill();
+    ctx.strokeStyle='#cceeff'; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(-dw*0.1,-dh/2); ctx.lineTo(dw*0.25,dh/2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dw*0.18,-dh/2); ctx.lineTo(-dw*0.08,dh/2); ctx.stroke();
+  } else if(pt==='ice'){
+    // Fire ball (opposite of ice)
     ctx.shadowColor='#ff6600'; ctx.shadowBlur=22;
     const g=ctx.createRadialGradient(0,-dh*0.1,2,0,0,dw/2);
     g.addColorStop(0,'#ffff00'); g.addColorStop(0.45,'#ff8800'); g.addColorStop(1,'#ff2200');
@@ -681,15 +690,6 @@ function drawPlayer(){
       const a=-Math.PI/2+(i-1)*0.55;
       ctx.beginPath(); ctx.arc(Math.cos(a)*dw*0.28, Math.sin(a)*dh*0.28-dh*0.28,5,0,Math.PI*2); ctx.fill();
     }
-  } else if(pt==='ice'){
-    // Ice cube
-    ctx.shadowColor='#88ddff'; ctx.shadowBlur=18;
-    ctx.fillStyle='rgba(175,225,255,0.88)';
-    rr(ctx,-dw/2,-dh/2,dw,dh,5); ctx.fill();
-    ctx.strokeStyle='#cceeff'; ctx.lineWidth=2; ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(-dw*0.1,-dh/2); ctx.lineTo(dw*0.25,dh/2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(dw*0.18,-dh/2); ctx.lineTo(-dw*0.08,dh/2); ctx.stroke();
   } else if(pt==='storm'){
     // Stone golem
     ctx.shadowColor='#aaaaaa'; ctx.shadowBlur=10;
