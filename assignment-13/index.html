@@ -763,7 +763,7 @@ function updatePhysics(){
   if(p.dead) return;
 
   // Jump on trigger — jungle gets a bigger fixed jump, no hold boost
-  if(jumpTriggered && p.jumps<1){
+  if(jumpTriggered && p.jumps<2){
     p.vy = wKey==='jungle' ? -14 : -11;
     p.jumps++;
     jumpTriggered=false;
