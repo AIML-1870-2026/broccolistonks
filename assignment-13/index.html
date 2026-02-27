@@ -66,32 +66,69 @@
     max-width: 360px;
     line-height: 1.5;
   }
-  .worlds {
-    display: grid;
+  /* ── MENU QUADRANT LAYOUT ── */
+  #s-menu {
+    background: transparent !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    display: grid !important;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    width: 100%;
-    max-width: 440px;
+    grid-template-rows: 1fr 1fr;
+    align-items: stretch;
+    justify-items: stretch;
   }
-  .wb {
-    background: var(--btn-bg);
-    border: 2px solid var(--btn-border);
-    border-radius: 8px;
-    color: #fff;
+  .qb {
+    background: transparent;
+    border: none;
     cursor: pointer;
-    padding: 12px 8px;
-    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 22px;
+    gap: 3px;
+    color: #fff;
+    font-family: inherit;
     font-weight: 700;
-    text-align: center;
-    transition: transform 0.15s, box-shadow 0.15s;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+    transition: background 0.15s;
   }
-  .wb:hover { transform: scale(1.04); box-shadow: 0 0 16px var(--btn-border); }
-  .wb .ic { font-size: 1.7rem; display: block; margin-bottom: 3px; }
-  .wb .pl { font-size: 0.7rem; opacity: 0.65; display: block; margin-top: 2px; }
-  #wb-lava   { --btn-border:#ff5500; --btn-bg:rgba(255,85,0,0.12); }
-  #wb-ice    { --btn-border:#88ddff; --btn-bg:rgba(136,221,255,0.12); }
-  #wb-storm  { --btn-border:#bb99ff; --btn-bg:rgba(180,130,255,0.12); }
-  #wb-jungle { --btn-border:#44dd88; --btn-bg:rgba(68,221,136,0.12); }
+  .qb:hover { background: rgba(255,255,255,0.09); }
+  #qb-lava   { border-right: 1px solid rgba(255,120,0,0.35); border-bottom: 1px solid rgba(255,120,0,0.35); }
+  #qb-ice    { border-bottom: 1px solid rgba(100,200,255,0.35); }
+  #qb-storm  { border-right: 1px solid rgba(170,140,255,0.35); }
+  .qb .ic    { font-size: 2.4rem; display: block; margin-bottom: 5px; filter: drop-shadow(0 0 8px rgba(255,255,255,0.6)); }
+  .qb .qname { font-size: 1rem; letter-spacing: 0.12em; display: block; }
+  .qb .qply  { font-size: 0.7rem; opacity: 0.75; display: block; margin-top: 2px; }
+  .menu-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .menu-title {
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    color: #fff;
+    text-shadow: 0 0 24px rgba(255,255,255,0.7);
+    background: rgba(0,0,0,0.65);
+    padding: 10px 20px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  .menu-hint {
+    margin-top: 7px;
+    font-size: 0.68rem;
+    opacity: 0.55;
+    color: #fff;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
   .btn {
     background: var(--btn-bg);
     border: 2px solid var(--btn-border);
@@ -137,14 +174,29 @@
 
   <!-- MENU -->
   <div class="screen" id="s-menu">
-    <h1>ELEMENTAL<br>RUNNER</h1>
-    <p class="sub">Your element is always the opposite of the world. Survive as long as possible.</p>
-    <p class="sub" style="font-size:0.75rem;opacity:0.45">SPACE / Tap to jump &nbsp;·&nbsp; Hold for higher jump</p>
-    <div class="worlds">
-      <button class="wb" id="wb-lava"   onclick="startGame('lava')">  <span class="ic">🔥</span>LAVA<span class="pl">You: ❄️ Ice Cube</span></button>
-      <button class="wb" id="wb-ice"    onclick="startGame('ice')">   <span class="ic">❄️</span>ICE<span class="pl">You: 🔥 Fire Ball</span></button>
-      <button class="wb" id="wb-storm"  onclick="startGame('storm')"> <span class="ic">⚡</span>STORM<span class="pl">You: 🪨 Stone Golem</span></button>
-      <button class="wb" id="wb-jungle" onclick="startGame('jungle')"><span class="ic">🌿</span>JUNGLE<span class="pl">You: 💨 Cloud</span></button>
+    <button class="qb" id="qb-lava"   onclick="startGame('lava')">
+      <span class="ic">🔥</span>
+      <span class="qname">LAVA</span>
+      <span class="qply">You: ❄️ Ice Cube</span>
+    </button>
+    <button class="qb" id="qb-ice"    onclick="startGame('ice')">
+      <span class="ic">❄️</span>
+      <span class="qname">ICE</span>
+      <span class="qply">You: 🔥 Fire Ball</span>
+    </button>
+    <button class="qb" id="qb-storm"  onclick="startGame('storm')">
+      <span class="ic">⚡</span>
+      <span class="qname">STORM</span>
+      <span class="qply">You: 🪨 Stone Golem</span>
+    </button>
+    <button class="qb" id="qb-jungle" onclick="startGame('jungle')">
+      <span class="ic">🌿</span>
+      <span class="qname">JUNGLE</span>
+      <span class="qply">You: 💨 Cloud</span>
+    </button>
+    <div class="menu-center">
+      <div class="menu-title">ELEMENTAL<br>RUNNER</div>
+      <div class="menu-hint">SPACE / Tap to jump &nbsp;·&nbsp; Hold for higher jump</div>
     </div>
   </div>
 
@@ -217,6 +269,8 @@ const WORLDS = {
 //  CHUNK LIBRARY  (rx = relative x from chunk start)
 //  ry = 0..1 fraction of canvas height
 // ═══════════════════════════════════════════════════════
+// spike_ry = plat_ry - 22/450 so spike base sits flush on platform surface
+// E.g. plat ry=0.65 → spike ry=0.601 | plat ry=0.35 → spike ry=0.301
 const CHUNKS = [
   // 0 Flat easy
   [{t:'p',rx:0,  ry:.65,w:200,h:18},{t:'p',rx:220,ry:.65,w:160,h:18}],
@@ -226,26 +280,31 @@ const CHUNKS = [
   [{t:'p',rx:0,  ry:.42,w:90, h:18},{t:'p',rx:110,ry:.56,w:90, h:18},{t:'p',rx:220,ry:.70,w:90, h:18}],
   // 3 Leap of Faith
   [{t:'p',rx:0,  ry:.65,w:90, h:18},{t:'p',rx:190,ry:.65,w:44, h:18},{t:'p',rx:310,ry:.65,w:110,h:18}],
-  // 4 Gauntlet
-  [{t:'p',rx:0,  ry:.65,w:360,h:18},{t:'h',rx:55, ry:.57,w:22, h:22},{t:'h',rx:130,ry:.57,w:22,h:22},{t:'h',rx:210,ry:.57,w:22,h:22},{t:'h',rx:295,ry:.57,w:22,h:22}],
+  // 4 Gauntlet — spikes sit on platform (ry = 0.65 - 22/450 = 0.601)
+  [{t:'p',rx:0,  ry:.65,w:360,h:18},{t:'h',rx:55, ry:.601,w:22,h:22},{t:'h',rx:130,ry:.601,w:22,h:22},{t:'h',rx:210,ry:.601,w:22,h:22},{t:'h',rx:295,ry:.601,w:22,h:22}],
   // 5 High Road
   [{t:'p',rx:0,  ry:.33,w:150,h:18},{t:'p',rx:170,ry:.33,w:110,h:18},{t:'p',rx:300,ry:.33,w:150,h:18}],
   // 6 Double Gap
   [{t:'p',rx:0,  ry:.65,w:80, h:18},{t:'p',rx:150,ry:.55,w:70, h:18},{t:'p',rx:290,ry:.65,w:80, h:18}],
-  // 7 Spike Valley
-  [{t:'p',rx:0,  ry:.65,w:55, h:18},{t:'h',rx:65, ry:.57,w:22, h:22},{t:'h',rx:95, ry:.57,w:22,h:22},{t:'p',rx:130,ry:.65,w:55,h:18},{t:'h',rx:197,ry:.57,w:22,h:22},{t:'p',rx:232,ry:.65,w:70,h:18}],
+  // 7 Spike Island — spikes always on their own platform, never in a gap
+  [{t:'p',rx:0,  ry:.65,w:120,h:18},{t:'h',rx:30,ry:.601,w:22,h:22},{t:'h',rx:75,ry:.601,w:22,h:22},
+   {t:'p',rx:165,ry:.65,w:110,h:18},{t:'h',rx:200,ry:.601,w:22,h:22},
+   {t:'p',rx:325,ry:.65,w:80, h:18}],
   // 8 Alternating heights
   [{t:'p',rx:0,  ry:.72,w:90, h:18},{t:'p',rx:105,ry:.44,w:90, h:18},{t:'p',rx:210,ry:.72,w:90, h:18},{t:'p',rx:315,ry:.44,w:90, h:18}],
-  // 9 Corridor with spikes
-  [{t:'p',rx:0,  ry:.65,w:280,h:18},{t:'h',rx:70, ry:.57,w:22, h:22},{t:'h',rx:150,ry:.57,w:22,h:22},{t:'h',rx:230,ry:.57,w:22,h:22},{t:'p',rx:298,ry:.65,w:70,h:18}],
+  // 9 Corridor with spikes (ry=0.601)
+  [{t:'p',rx:0,  ry:.65,w:280,h:18},{t:'h',rx:70,ry:.601,w:22,h:22},{t:'h',rx:150,ry:.601,w:22,h:22},{t:'h',rx:230,ry:.601,w:22,h:22},{t:'p',rx:298,ry:.65,w:70,h:18}],
   // 10 Triple hop
   [{t:'p',rx:0,  ry:.65,w:55, h:18},{t:'p',rx:90, ry:.65,w:55, h:18},{t:'p',rx:180,ry:.65,w:55, h:18},{t:'p',rx:270,ry:.65,w:75, h:18}],
   // 11 Zigzag
   [{t:'p',rx:0,  ry:.70,w:75, h:18},{t:'p',rx:90, ry:.52,w:75, h:18},{t:'p',rx:180,ry:.70,w:75, h:18},{t:'p',rx:270,ry:.52,w:75, h:18}],
-  // 12 Spiky high road
-  [{t:'p',rx:0,  ry:.35,w:260,h:18},{t:'h',rx:60, ry:.27,w:22, h:22},{t:'h',rx:140,ry:.27,w:22,h:22},{t:'h',rx:210,ry:.27,w:22,h:22}],
+  // 12 Spiky high road (plat ry=0.35 → spike ry=0.301)
+  [{t:'p',rx:0,  ry:.35,w:260,h:18},{t:'h',rx:60,ry:.301,w:22,h:22},{t:'h',rx:140,ry:.301,w:22,h:22},{t:'h',rx:210,ry:.301,w:22,h:22}],
   // 13 Tiny platforms
   [{t:'p',rx:0,  ry:.60,w:40, h:18},{t:'p',rx:80, ry:.50,w:40, h:18},{t:'p',rx:160,ry:.65,w:40, h:18},{t:'p',rx:240,ry:.55,w:40, h:18},{t:'p',rx:320,ry:.65,w:60, h:18}],
+  // 14 Low spiked platform + high clear escape
+  [{t:'p',rx:0,  ry:.65,w:160,h:18},{t:'h',rx:45,ry:.601,w:22,h:22},{t:'h',rx:110,ry:.601,w:22,h:22},
+   {t:'p',rx:200,ry:.38,w:140,h:18}],
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -711,17 +770,17 @@ function updatePhysics(){
   const p=player;
   if(p.dead) return;
 
-  // Variable jump
+  // Jump on trigger — jungle gets a bigger fixed jump, no hold boost
   if(jumpTriggered && p.jumps<1){
-    p.vy=-11;
+    p.vy = wKey==='jungle' ? -14 : -11;
     p.jumps++;
     jumpTriggered=false;
     p.stT=0.8;
   }
   jumpTriggered=false;
 
-  // Hold jump boost
-  if(jumpHeld && p.vy<0){ p.vy-=0.32; if(p.vy<-16) p.vy=-16; }
+  // Hold jump boost — disabled for jungle (cloud's floaty jump is fixed height)
+  if(wKey!=='jungle' && jumpHeld && p.vy<0){ p.vy-=0.32; if(p.vy<-16) p.vy=-16; }
 
   p.vy+=wCfg.gravity;
   if(p.vy>18) p.vy=18;
@@ -878,10 +937,22 @@ function loop(){
   frame++;
 
   if(state==='menu'){
-    menuScroll+=0.8;
-    scrolled=menuScroll;
-    wKey='lava'; wCfg=WORLDS.lava;
-    drawBg();
+    menuScroll+=0.7;
+    const _savedKey=wKey, _savedCfg=wCfg, _savedScroll=scrolled;
+    const mqWKs=['lava','ice','storm','jungle'];
+    const mqCols=[0,1,0,1], mqRows=[0,0,1,1];
+    mqWKs.forEach((wk,i)=>{
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(mqCols[i]*W/2, mqRows[i]*H/2, W/2, H/2);
+      ctx.clip();
+      ctx.translate(mqCols[i]*W/2, mqRows[i]*H/2);
+      ctx.scale(0.5,0.5);
+      wKey=wk; wCfg=WORLDS[wk]; scrolled=menuScroll;
+      drawBg();
+      ctx.restore();
+    });
+    wKey=_savedKey; wCfg=_savedCfg; scrolled=_savedScroll;
     return;
   }
 
