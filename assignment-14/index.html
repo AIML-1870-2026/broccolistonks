@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <main class="container">
+    <header class="header">
+      <h1 class="logo">SKYVAULT</h1>
+      <p class="tagline">live atmospheric data</p>
+    </header>
+
+    <div class="search-row">
+      <div class="search-wrap">
+        <input
+          id="city-input"
+          type="text"
+          placeholder="Enter a city..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="search-btn" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="unit-toggle" id="unit-toggle" aria-label="Toggle temperature units">
+        <span class="unit-label" id="label-c">°C</span>
+        <div class="toggle-track">
+          <div class="toggle-thumb"></div>
+        </div>
+        <span class="unit-label" id="label-f">°F</span>
+      </div>
+    </div>
+
+    <div id="status-msg" class="status-msg" aria-live="polite"></div>
+
+    <div id="weather-card" class="weather-card hidden">
+      <div class="card-top">
+        <div class="location-block">
+          <div class="city-name" id="city-name"></div>
+          <div class="country" id="country"></div>
+          <div class="local-time" id="local-time"></div>
+        </div>
+        <div class="icon-block">
+          <img id="weather-icon" src="" alt="weather icon" />
+          <div class="condition" id="condition"></div>
+        </div>
+      </div>
+
+      <div class="temp-block">
+        <span class="temp-value" id="temp-value"></span>
+        <span class="temp-unit" id="temp-unit"></span>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Feels Like</div>
+          <div class="stat-value" id="feels-like"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Humidity</div>
+          <div class="stat-value" id="humidity"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Wind Speed</div>
+          <div class="stat-value" id="wind-speed"></div>
+        </div>
+      </div>
+
+      <div class="extras-section hidden" id="extras-section">
+        <div class="extras-divider"></div>
+        <div class="extras-grid">
+
+          <div class="extra-card" id="uv-card">
+            <div class="extra-label">UV Index</div>
+            <div class="extra-main">
+              <span class="extra-value" id="uv-value"></span>
+              <span class="extra-badge" id="uv-badge"></span>
+            </div>
+            <div class="uv-track">
+              <div class="uv-fill" id="uv-fill"></div>
+              <div class="uv-marker" id="uv-marker"></div>
+            </div>
+          </div>
+
+          <div class="extra-card" id="aqi-card">
+            <div class="extra-label">Air Quality</div>
+            <div class="extra-main">
+              <span class="aqi-dot" id="aqi-dot"></span>
+              <span class="extra-badge" id="aqi-badge"></span>
+            </div>
+            <div class="pollutants">
+              <span class="pollutant-chip" id="pm25-chip"></span>
+              <span class="pollutant-chip" id="co-chip"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
