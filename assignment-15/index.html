@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEO Dashboard — Near-Earth Object Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/globe.gl@2.30.0/dist/globe.gl.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════
+       CSS VARIABLE SYSTEM
+    ═══════════════════════════════════════════ */
+    :root {
+      /* Colors */
+      --bg-base:        #080c10;
+      --bg-surface:     #0d1117;
+      --bg-panel:       #111820;
+      --bg-elevated:    #161e28;
+      --border:         #1e2d3d;
+      --border-bright:  #2a3f55;
+
+      --accent-cyan:    #00d4ff;
+      --accent-cyan-dim:#0099bb;
+      --accent-amber:   #ffaa00;
+      --accent-red:     #ff4444;
+      --accent-green:   #00cc66;
+
+      --text-primary:   #e8f0f8;
+      --text-secondary: #7a9ab8;
+      --text-muted:     #3d5a73;
+      --text-data:      #a8c8e8;
+
+      /* Typography */
+      --font-display:   'Orbitron', monospace;
+      --font-mono:      'Share Tech Mono', monospace;
+      --font-ui:        'Inter', sans-serif;
+
+      /* Spacing */
+      --sp-xs:  4px;
+      --sp-sm:  8px;
+      --sp-md:  16px;
+      --sp-lg:  24px;
+      --sp-xl:  40px;
+
+      /* Radii */
+      --r-sm: 3px;
+      --r-md: 6px;
+      --r-lg: 12px;
+
+      /* Transitions */
+      --transition-fast: 150ms ease;
+      --transition-med:  300ms ease;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Subtle star field background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 45% 8%,  rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 20%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 92% 35%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 5%  80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 38% 75%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 90%, rgba(255,255,255,0.3) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       PAGE HEADER
+    ═══════════════════════════════════════════ */
+    #page-header {
+      position: relative;
+      z-index: 10;
+      padding: var(--sp-lg) var(--sp-xl);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0,212,255,0.04) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-md);
+      animation: fadeSlideDown 0.6s ease both;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-md);
+    }
+
+    .header-icon {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--accent-cyan-dim);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+      font-size: 20px;
+      background: rgba(0,212,255,0.06);
+      flex-shrink: 0;
+    }
+
+    #page-header h1 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+
+    .header-tagline {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-md);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 6px var(--accent-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    /* ═══════════════════════════════════════════
+       TAB NAVIGATION
+    ═══════════════════════════════════════════ */
+    #tab-nav {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+      padding: 0 var(--sp-xl);
+      overflow-x: auto;
+      scrollbar-width: none;
+      animation: fadeSlideDown 0.6s 0.1s ease both;
+    }
+
+    #tab-nav::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+      padding: var(--sp-md) var(--sp-lg);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition-fast), border-color var(--transition-fast);
+      margin-bottom: -1px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .tab-btn.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+    }
+
+    .tab-btn .tab-icon {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      background: rgba(0,212,255,0.12);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 9px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent-cyan);
+      font-weight: normal;
+      letter-spacing: 0;
+    }
+
+    /* Separator lines between tabs */
+    .tab-btn + .tab-btn::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 25%;
+      height: 50%;
+      width: 1px;
+      background: var(--border);
+    }
+
+    /* ═══════════════════════════════════════════
+       MAIN CONTENT AREA
+    ═══════════════════════════════════════════ */
+    #main {
+      position: relative;
+      z-index: 10;
+      padding: var(--sp-xl);
+      min-height: calc(100vh - 140px);
+    }
+
+    /* ═══════════════════════════════════════════
+       TAB PANELS
+    ═══════════════════════════════════════════ */
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.25s ease both;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ═══════════════════════════════════════════
+       PLACEHOLDER PANELS
+    ═══════════════════════════════════════════ */
+    .panel-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-lg);
+      min-height: 320px;
+      border: 1px dashed var(--border-bright);
+      border-radius: var(--r-lg);
+      background: rgba(13,17,23,0.6);
+      color: var(--text-muted);
+      text-align: center;
+      padding: var(--sp-xl);
+    }
+
+    .panel-placeholder .ph-icon {
+      font-size: 36px;
+      color: var(--border-bright);
+    }
+
+    .panel-placeholder .ph-label {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .panel-placeholder .ph-desc {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      max-width: 300px;
+    }
+
+    /* ═══════════════════════════════════════════
+       LOADING SPINNER
+    ═══════════════════════════════════════════ */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-md);
+      padding: var(--sp-xl);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .loading.hidden { display: none; }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      position: relative;
+    }
+
+    .spinner::before,
+    .spinner::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .spinner::before {
+      inset: 0;
+      border: 2px solid var(--border);
+    }
+
+    .spinner::after {
+      inset: 0;
+      border: 2px solid transparent;
+      border-top-color: var(--accent-cyan);
+      animation: spin 0.9s linear infinite;
+    }
+
+    /* ═══════════════════════════════════════════
+       ERROR COMPONENT
+    ═══════════════════════════════════════════ */
+    .error {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-md);
+      padding: var(--sp-md) var(--sp-lg);
+      background: rgba(255,68,68,0.06);
+      border: 1px solid rgba(255,68,68,0.25);
+      border-left: 3px solid var(--accent-red);
+      border-radius: var(--r-md);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .error.hidden { display: none; }
+
+    .error-icon {
+      color: var(--accent-red);
+      font-size: 14px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .error-title {
+      font-size: 13px;
+      color: var(--accent-red);
+      margin-bottom: 2px;
+    }
+
+    /* ═══════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════ */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    /* Staggered panel entrance */
+    .tab-panel.active { animation: fadeIn 0.25s ease both; }
+
+    /* ═══════════════════════════════════════════
+       THIS WEEK TABLE
+    ═══════════════════════════════════════════ */
+    .neo-table-wrap {
+      overflow-x: auto;
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .neo-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .neo-table thead {
+      background: var(--bg-elevated);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .neo-table th {
+      padding: var(--sp-sm) var(--sp-md);
+      text-align: left;
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-bright);
+      white-space: nowrap;
+      user-select: none;
+      cursor: pointer;
+      transition: color var(--transition-fast);
+    }
+
+    .neo-table th:hover { color: var(--accent-cyan); }
+
+    .neo-table th.sort-asc::after  { content: ' ↑'; color: var(--accent-cyan); }
+    .neo-table th.sort-desc::after { content: ' ↓'; color: var(--accent-cyan); }
+
+    .neo-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition-fast);
+    }
+
+    .neo-table tbody tr:last-child { border-bottom: none; }
+    .neo-table tbody tr:hover { background: rgba(0,212,255,0.04); }
+
+    .neo-table td {
+      padding: var(--sp-sm) var(--sp-md);
+      color: var(--text-data);
+      white-space: nowrap;
+    }
+
+    .neo-table td.col-name {
+      color: var(--text-primary);
+      font-size: 12px;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .neo-table td.col-hazard {
+      text-align: center;
+    }
+
+    .hazard-yes {
+      color: var(--accent-red);
+      font-size: 14px;
+    }
+
+    .hazard-no {
+      color: var(--accent-green);
+      font-size: 14px;
+    }
+
+    .neo-table td.col-dist-ld {
+      color: var(--accent-amber);
+      font-weight: bold;
+    }
+
+    /* Row highlight for hazardous objects */
+    .neo-table tbody tr.is-hazardous {
+      background: rgba(255,68,68,0.04);
+    }
+
+    .neo-table tbody tr.is-hazardous:hover {
+      background: rgba(255,68,68,0.08);
+    }
+
+    /* Table toolbar */
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-md);
+      gap: var(--sp-md);
+      flex-wrap: wrap;
+    }
+
+    .table-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-md);
+    }
+
+    .table-stat {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .table-stat strong {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: block;
+      line-height: 1.1;
+    }
+
+    .stat-divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border-bright);
+    }
+
+    /* ═══════════════════════════════════════════
+       SIZE & SPEED PANEL
+    ═══════════════════════════════════════════ */
+    .ss-stats-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-md);
+      margin-bottom: var(--sp-lg);
+      flex-wrap: wrap;
+    }
+
+    .ss-stat {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.3;
+    }
+
+    .ss-stat strong {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      display: block;
+      line-height: 1.1;
+    }
+
+    .ss-stat.color-cyan  strong { color: var(--accent-cyan); }
+    .ss-stat.color-amber strong { color: var(--accent-amber); }
+    .ss-stat.color-green strong { color: var(--accent-green); }
+
+    .ss-charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-lg);
+    }
+
+    @media (max-width: 900px) {
+      .ss-charts { grid-template-columns: 1fr; }
+    }
+
+    .ss-chart-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-lg);
+    }
+
+    .ss-chart-title {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: var(--sp-md);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+    }
+
+    .ss-chart-title .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .ss-chart-title .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    .ss-chart-wrap {
+      position: relative;
+    }
+
+    .ss-no-data {
+      text-align: center;
+      padding: var(--sp-xl);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      border: 1px dashed var(--border-bright);
+      border-radius: var(--r-md);
+    }
+
+    /* ═══════════════════════════════════════════
+       SCHEDULE PANEL
+    ═══════════════════════════════════════════ */
+    .sched-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-md);
+      margin-bottom: var(--sp-lg);
+      flex-wrap: wrap;
+    }
+
+    .sched-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-md);
+      flex-wrap: wrap;
+    }
+
+    .sched-filter-label {
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .sched-filter-select {
+      appearance: none;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--r-sm);
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 5px 28px 5px 10px;
+      cursor: pointer;
+      outline: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a9ab8'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      transition: border-color var(--transition-fast);
+    }
+
+    .sched-filter-select:hover,
+    .sched-filter-select:focus { border-color: var(--accent-cyan); }
+
+    /* Monthly summary pills */
+    .monthly-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-sm);
+      margin-bottom: var(--sp-lg);
+      padding: var(--sp-md);
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+    }
+
+    .month-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.15);
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .month-pill .pill-count {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    /* ═══════════════════════════════════════════
+       IMPACT RISK PANEL
+    ═══════════════════════════════════════════ */
+    .ir-explainer {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-amber);
+      border-radius: var(--r-md);
+      padding: var(--sp-md) var(--sp-lg);
+      margin-bottom: var(--sp-lg);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .ir-explainer-title {
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-amber);
+      margin-bottom: var(--sp-sm);
+    }
+
+    .ir-explainer p + p { margin-top: var(--sp-sm); }
+
+    /* Torino scale badge */
+    .torino-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: var(--r-sm);
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .torino-0            { background: rgba(100,100,100,0.2); color: #888; border: 1px solid #555; }
+    .torino-low          { background: rgba(255,200,0,0.15);  color: #ffcc00; border: 1px solid rgba(255,200,0,0.4); }
+    .torino-mid          { background: rgba(255,120,0,0.15);  color: #ff7800; border: 1px solid rgba(255,120,0,0.4); }
+    .torino-high         { background: rgba(255,50,50,0.15);  color: #ff3232; border: 1px solid rgba(255,50,50,0.4); }
+
+    /* Probability bar spark */
+    .prob-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-sm);
+    }
+
+    .prob-bar {
+      height: 4px;
+      min-width: 2px;
+      border-radius: 2px;
+      background: var(--accent-amber);
+      opacity: 0.7;
+    }
+
+    .prob-val {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-data);
+      white-space: nowrap;
+    }
+
+    /* Palermo scale coloring in cell */
+    .palermo-neg  { color: var(--text-secondary); }
+    .palermo-warn { color: #ffcc00; }
+    .palermo-crit { color: var(--accent-red); }
+
+    /* ═══════════════════════════════════════════
+       MISS DISTANCE GLOBE — PHASE 6
+    ═══════════════════════════════════════════ */
+    #globe-container {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      background: radial-gradient(ellipse at center, #0a1628 0%, #020408 100%);
+      border: 1px solid var(--border);
+    }
+
+    #globe-el {
+      width: 100%;
+      height: 100%;
+    }
+
+    #globe-no-data {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-lg);
+      height: 100%;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-align: center;
+      padding: var(--sp-xl);
+    }
+
+    #globe-no-data .ph-icon { font-size: 40px; color: var(--border-bright); }
+
+    .globe-fetch-btn {
+      padding: 10px 24px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid var(--accent-cyan-dim);
+      border-radius: var(--r-md);
+      color: var(--accent-cyan);
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .globe-fetch-btn:hover {
+      background: rgba(0,212,255,0.2);
+      border-color: var(--accent-cyan);
+    }
+
+    /* Legend strip */
+    #globe-legend {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-lg);
+      flex-wrap: wrap;
+      margin-top: var(--sp-md);
+      padding: var(--sp-sm) var(--sp-md);
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .legend-entry {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot-lg {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Detail panel */
+    #globe-detail {
+      position: absolute;
+      top: var(--sp-md);
+      right: var(--sp-md);
+      width: 240px;
+      background: rgba(13,17,23,0.92);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--r-md);
+      padding: var(--sp-md);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      backdrop-filter: blur(8px);
+      display: none;
+      z-index: 20;
+      animation: fadeIn 0.15s ease both;
+    }
+
+    #globe-detail.visible { display: block; }
+
+    #globe-detail-name {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--sp-sm);
+      letter-spacing: 0.06em;
+      word-break: break-word;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(30,45,61,0.6);
+    }
+
+    .detail-row:last-child { border-bottom: none; }
+
+    .detail-label { color: var(--text-muted); }
+    .detail-value { color: var(--text-data); text-align: right; }
+    .detail-value.hazard-yes { color: var(--accent-red); }
+    .detail-value.hazard-no  { color: var(--accent-green); }
+
+    #globe-close-btn {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      line-height: 1;
+      transition: color var(--transition-fast);
+    }
+
+    #globe-close-btn:hover { color: var(--text-primary); }
+
+    #globe-disclaimer {
+      margin-top: var(--sp-sm);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ═══════════════════════════════════════════
+       SCAN LINE EFFECT (subtle)
+    ═══════════════════════════════════════════ */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE HEADER
+  ═══════════════════════════════════════════ -->
+  <header id="page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i class="fa-solid fa-meteor"></i>
+      </div>
+      <div>
+        <h1>NEO Dashboard</h1>
+        <div class="header-tagline">NASA / JPL Near-Earth Object Mission Control</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span>SYSTEMS NOMINAL</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       TAB NAVIGATION
+  ═══════════════════════════════════════════ -->
+  <nav id="tab-nav" role="tablist">
+    <button class="tab-btn active" data-tab="miss-distance" role="tab" aria-selected="true">
+      <i class="fa-solid fa-globe tab-icon"></i>
+      Miss Distance
+    </button>
+    <button class="tab-btn" data-tab="this-week" role="tab" aria-selected="false">
+      <i class="fa-solid fa-calendar-week tab-icon"></i>
+      This Week
+      <span class="tab-badge" id="badge-this-week">—</span>
+    </button>
+    <button class="tab-btn" data-tab="size-speed" role="tab" aria-selected="false">
+      <i class="fa-solid fa-chart-bar tab-icon"></i>
+      Size &amp; Speed
+    </button>
+    <button class="tab-btn" data-tab="schedule" role="tab" aria-selected="false">
+      <i class="fa-solid fa-clock-rotate-left tab-icon"></i>
+      Schedule
+    </button>
+    <button class="tab-btn" data-tab="impact-risk" role="tab" aria-selected="false">
+      <i class="fa-solid fa-triangle-exclamation tab-icon"></i>
+      Impact Risk
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN PANELS
+  ═══════════════════════════════════════════ -->
+  <main id="main">
+
+    <!-- Miss Distance -->
+    <section class="tab-panel active" id="panel-miss-distance" role="tabpanel">
+      <!-- Shown only before NeoWs data has loaded -->
+      <div id="globe-no-data-wrap">
+        <div id="globe-container">
+          <div id="globe-no-data">
+            <div class="ph-icon"><i class="fa-solid fa-globe"></i></div>
+            <div id="globe-no-data-msg">NeoWs data not yet loaded.</div>
+            <button class="globe-fetch-btn" id="globe-trigger-btn">
+              <i class="fa-solid fa-satellite-dish" style="margin-right:6px;"></i>Load Asteroid Data
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Populated once data is ready -->
+      <div id="globe-wrap" style="display:none;">
+        <div id="globe-container">
+          <div id="globe-el"></div>
+          <div id="globe-detail">
+            <button id="globe-close-btn" title="Close">&times;</button>
+            <div id="globe-detail-name"></div>
+            <div class="detail-row"><span class="detail-label">Miss Dist</span><span class="detail-value" id="gd-dist"></span></div>
+            <div class="detail-row"><span class="detail-label">Distance km</span><span class="detail-value" id="gd-km"></span></div>
+            <div class="detail-row"><span class="detail-label">Diameter est.</span><span class="detail-value" id="gd-diam"></span></div>
+            <div class="detail-row"><span class="detail-label">Velocity</span><span class="detail-value" id="gd-vel"></span></div>
+            <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value" id="gd-date"></span></div>
+            <div class="detail-row"><span class="detail-label">Hazardous</span><span class="detail-value" id="gd-haz"></span></div>
+          </div>
+        </div>
+        <div id="globe-legend">
+          <span style="color:var(--text-muted);font-family:var(--font-display);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;">Legend</span>
+          <div class="legend-entry"><div class="legend-dot-lg" style="background:#ff4444;"></div> Potentially Hazardous</div>
+          <div class="legend-entry"><div class="legend-dot-lg" style="background:#00d4ff;"></div> Routine Flyby</div>
+          <div class="legend-entry"><div class="legend-dot-lg" style="background:#cccccc;box-shadow:0 0 6px #fff;"></div> Moon (1.0 LD)</div>
+          <span style="margin-left:auto;color:var(--text-muted);font-size:10px;" id="globe-count-label"></span>
+        </div>
+        <div id="globe-disclaimer">Dot positions are illustrative — actual flyby geometry depends on orbital mechanics</div>
+      </div>
+    </section>
+
+    <!-- This Week -->
+    <section class="tab-panel" id="panel-this-week" role="tabpanel">
+      <div class="loading" id="loading-this-week">
+        <div class="spinner"></div>
+        <span>FETCHING NEO DATA&hellip;</span>
+      </div>
+      <div class="error hidden" id="error-this-week">
+        <i class="fa-solid fa-circle-exclamation error-icon"></i>
+        <div>
+          <div class="error-title">API Fetch Failed</div>
+          <div id="error-this-week-msg">Could not retrieve NeoWs data. Check your connection and try again.</div>
+        </div>
+      </div>
+      <div class="hidden" id="content-this-week">
+        <div class="table-toolbar">
+          <div class="table-toolbar-left">
+            <div class="table-stat">
+              <strong id="stat-total">—</strong>
+              OBJECTS
+            </div>
+            <div class="stat-divider"></div>
+            <div class="table-stat">
+              <strong id="stat-hazardous">—</strong>
+              HAZARDOUS
+            </div>
+            <div class="stat-divider"></div>
+            <div class="table-stat">
+              <strong id="stat-closest">—</strong>
+              CLOSEST (LD)
+            </div>
+          </div>
+          <div class="table-stat" id="stat-daterange" style="color:var(--text-muted);font-size:10px;"></div>
+        </div>
+        <div class="neo-table-wrap">
+          <table class="neo-table" id="neo-table">
+            <thead>
+              <tr>
+                <th data-col="name">Name</th>
+                <th data-col="date">Date</th>
+                <th data-col="distLD" class="sort-asc">Miss Dist (LD)</th>
+                <th data-col="distKM">Miss Dist (km)</th>
+                <th data-col="diameter">Diam. Est (m)</th>
+                <th data-col="velocity">Velocity (km/s)</th>
+                <th data-col="hazardous" style="text-align:center;">Hazardous</th>
+              </tr>
+            </thead>
+            <tbody id="neo-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Size & Speed -->
+    <section class="tab-panel" id="panel-size-speed" role="tabpanel">
+      <div class="ss-no-data" id="ss-no-data" style="display:none;">
+        No data available — load the <strong>This Week</strong> tab first.
+      </div>
+      <div id="ss-content" style="display:none;">
+        <div class="ss-stats-bar">
+          <div class="ss-stat color-cyan">
+            <strong id="ss-stat-count">—</strong>
+            OBJECTS
+          </div>
+          <div class="stat-divider"></div>
+          <div class="ss-stat color-amber">
+            <strong id="ss-stat-largest">—</strong>
+            LARGEST (m)
+          </div>
+          <div class="stat-divider"></div>
+          <div class="ss-stat color-green">
+            <strong id="ss-stat-fastest">—</strong>
+            FASTEST (km/s)
+          </div>
+        </div>
+        <div class="ss-charts">
+          <div class="ss-chart-card">
+            <div class="ss-chart-title">
+              <i class="fa-solid fa-circle-dot" style="color:var(--accent-cyan);font-size:10px;"></i>
+              Estimated Diameter
+              <div class="legend-item">
+                <span class="legend-dot" style="background:var(--accent-amber);"></span> Largest
+              </div>
+            </div>
+            <div class="ss-chart-wrap">
+              <canvas id="chart-size"></canvas>
+            </div>
+          </div>
+          <div class="ss-chart-card">
+            <div class="ss-chart-title">
+              <i class="fa-solid fa-bolt" style="color:var(--accent-green);font-size:10px;"></i>
+              Relative Velocity
+              <div class="legend-item">
+                <span class="legend-dot" style="background:var(--accent-red);"></span> Fastest
+              </div>
+            </div>
+            <div class="ss-chart-wrap">
+              <canvas id="chart-speed"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Schedule -->
+    <section class="tab-panel" id="panel-schedule" role="tabpanel">
+      <div class="loading hidden" id="loading-schedule">
+        <div class="spinner"></div>
+        <span>FETCHING CLOSE APPROACH DATA&hellip;</span>
+      </div>
+      <div class="error hidden" id="error-schedule">
+        <i class="fa-solid fa-circle-exclamation error-icon"></i>
+        <div>
+          <div class="error-title">SBDB Fetch Failed</div>
+          <div id="error-schedule-msg">Could not retrieve close approach data.</div>
+        </div>
+      </div>
+      <div class="hidden" id="content-schedule">
+        <div class="sched-toolbar">
+          <div class="sched-toolbar-left">
+            <div class="table-stat">
+              <strong id="sched-stat-total">—</strong>
+              APPROACHES
+            </div>
+            <div class="stat-divider"></div>
+            <div class="table-stat">
+              <strong id="sched-stat-months">—</strong>
+              MONTHS
+            </div>
+            <div class="stat-divider"></div>
+            <span class="sched-filter-label">Max Distance</span>
+            <select class="sched-filter-select" id="sched-dist-filter">
+              <option value="1">1 LD</option>
+              <option value="5">5 LD</option>
+              <option value="10" selected>10 LD</option>
+              <option value="9999">Any</option>
+            </select>
+          </div>
+          <div class="table-stat" style="color:var(--text-muted);font-size:10px;" id="sched-range-label"></div>
+        </div>
+        <div class="monthly-summary" id="monthly-summary"></div>
+        <div class="neo-table-wrap">
+          <table class="neo-table" id="sched-table">
+            <thead>
+              <tr>
+                <th data-scol="des">Object</th>
+                <th data-scol="cd" class="sort-asc">Date</th>
+                <th data-scol="dist">Distance (LD)</th>
+                <th data-scol="dist_km">Distance (km)</th>
+                <th data-scol="diameter">Diameter</th>
+              </tr>
+            </thead>
+            <tbody id="sched-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Impact Risk -->
+    <section class="tab-panel" id="panel-impact-risk" role="tabpanel">
+      <div class="loading hidden" id="loading-sentry">
+        <div class="spinner"></div>
+        <span>FETCHING SENTRY IMPACT DATA&hellip;</span>
+      </div>
+      <div class="error hidden" id="error-sentry">
+        <i class="fa-solid fa-circle-exclamation error-icon"></i>
+        <div>
+          <div class="error-title">Sentry Fetch Failed</div>
+          <div id="error-sentry-msg">Could not retrieve Sentry impact monitoring data.</div>
+        </div>
+      </div>
+      <div class="hidden" id="content-sentry">
+        <div class="ir-explainer">
+          <div class="ir-explainer-title"><i class="fa-solid fa-circle-info" style="margin-right:6px;"></i>Scale Reference</div>
+          <p>The <strong style="color:var(--text-primary);">Torino Scale</strong> (0–10) is the public-facing impact hazard index: 0 means no concern, 10 is a certain global catastrophe. All known objects currently rate 0.</p>
+          <p>The <strong style="color:var(--text-primary);">Palermo Scale</strong> is a logarithmic technical measure comparing impact probability to the background rate of random impacts of similar energy. Values below −2 are routine; values near 0 or above warrant scientific attention.</p>
+        </div>
+        <div class="table-toolbar" style="margin-bottom:var(--sp-md);">
+          <div class="table-toolbar-left">
+            <div class="table-stat">
+              <strong id="ir-stat-total">—</strong>
+              TRACKED OBJECTS
+            </div>
+            <div class="stat-divider"></div>
+            <div class="table-stat">
+              <strong id="ir-stat-nonzero">—</strong>
+              NON-ZERO TORINO
+            </div>
+            <div class="stat-divider"></div>
+            <div class="table-stat">
+              <strong id="ir-stat-highest-ts">—</strong>
+              HIGHEST TORINO
+            </div>
+          </div>
+        </div>
+        <div class="neo-table-wrap">
+          <table class="neo-table" id="sentry-table">
+            <thead>
+              <tr>
+                <th data-ircol="des">Name</th>
+                <th data-ircol="ip">Impact Prob.</th>
+                <th data-ircol="ts" style="text-align:center;">Torino</th>
+                <th data-ircol="ps" class="sort-desc">Palermo</th>
+                <th data-ircol="diameter">Est. Diameter</th>
+                <th data-ircol="range">Impact Years</th>
+              </tr>
+            </thead>
+            <tbody id="sentry-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ═══════════════════════════════════════════
+    // TAB SWITCHING
+    // ═══════════════════════════════════════════
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const panels  = document.querySelectorAll('.tab-panel');
+
+    function activateTab(tabId) {
+      tabBtns.forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', String(active));
+      });
+      panels.forEach(panel => {
+        panel.classList.toggle('active', panel.id === `panel-${tabId}`);
+      });
+    }
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    });
+
+    // ═══════════════════════════════════════════
+    // NEOWS FETCH — PHASE 2
+    // ═══════════════════════════════════════════
+    window.neoData = [];
+
+    const NEO_API_KEY  = 'gcdSH8EoFB7FJp6L9Wl8NBgTo3gtchuCynwhxECS';
+    const NEO_BASE_URL = 'https://api.nasa.gov/neo/rest/v1/feed';
+    const START_DATE   = '2026-04-01';
+    const END_DATE     = '2026-04-07';
+
+    // DOM refs — This Week
+    const elLoading   = document.getElementById('loading-this-week');
+    const elError     = document.getElementById('error-this-week');
+    const elErrorMsg  = document.getElementById('error-this-week-msg');
+    const elContent   = document.getElementById('content-this-week');
+    const elTbody     = document.getElementById('neo-tbody');
+    const elBadge     = document.getElementById('badge-this-week');
+    const elStatTotal = document.getElementById('stat-total');
+    const elStatHaz   = document.getElementById('stat-hazardous');
+    const elStatClose = document.getElementById('stat-closest');
+    const elDateRange = document.getElementById('stat-daterange');
+
+    function show(el)  { el.classList.remove('hidden'); }
+    function hide(el)  { el.classList.add('hidden'); }
+
+    // ── Parse a single NEO entry into a flat object ──────────────────────────
+    function parseAsteroid(neo) {
+      const ca     = neo.close_approach_data[0];
+      const dMin   = neo.estimated_diameter.meters.estimated_diameter_min;
+      const dMax   = neo.estimated_diameter.meters.estimated_diameter_max;
+      return {
+        id:        neo.id,
+        name:      neo.name.replace(/[()]/g, '').trim(),
+        date:      ca.close_approach_date,
+        distLD:    parseFloat(ca.miss_distance.lunar),
+        distKM:    parseFloat(ca.miss_distance.kilometers),
+        diameter:  (dMin + dMax) / 2,
+        velocity:  parseFloat(ca.relative_velocity.kilometers_per_second),
+        hazardous: neo.is_potentially_hazardous_asteroid,
+      };
+    }
+
+    // ── Fetch ─────────────────────────────────────────────────────────────────
+    async function fetchNeoData() {
+      show(elLoading);
+      hide(elError);
+      hide(elContent);
+
+      try {
+        const url  = `${NEO_BASE_URL}?start_date=${START_DATE}&end_date=${END_DATE}&api_key=${NEO_API_KEY}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+
+        // Flatten the date-keyed map into one array
+        window.neoData = Object.values(json.near_earth_objects)
+          .flat()
+          .map(parseAsteroid);
+
+        renderThisWeek();
+      } catch (err) {
+        hide(elLoading);
+        elErrorMsg.textContent = `Could not retrieve NeoWs data: ${err.message}`;
+        show(elError);
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // THIS WEEK TABLE — RENDER + SORT
+    // ═══════════════════════════════════════════
+    let sortCol = 'distLD';
+    let sortDir = 'asc';   // 'asc' | 'desc'
+
+    function sortData(data, col, dir) {
+      return [...data].sort((a, b) => {
+        let va = a[col], vb = b[col];
+        // String compare for name/date; numeric for the rest
+        if (typeof va === 'string') {
+          return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        }
+        return dir === 'asc' ? va - vb : vb - va;
+      });
+    }
+
+    function fmt(n, decimals = 2) {
+      return typeof n === 'number' ? n.toFixed(decimals) : n;
+    }
+
+    function fmtKM(n) {
+      return n >= 1_000_000
+        ? (n / 1_000_000).toFixed(2) + 'M'
+        : Math.round(n).toLocaleString();
+    }
+
+    function renderThisWeek() {
+      hide(elLoading);
+      hide(elError);
+
+      const data      = window.neoData;
+      const hazCount  = data.filter(d => d.hazardous).length;
+      const closest   = Math.min(...data.map(d => d.distLD));
+
+      // Update stats
+      elStatTotal.textContent = data.length;
+      elStatHaz.textContent   = hazCount;
+      elStatClose.textContent = fmt(closest, 2);
+      elBadge.textContent     = data.length;
+      elDateRange.textContent = `${START_DATE} → ${END_DATE}`;
+
+      // Update header sorts
+      document.querySelectorAll('#neo-table th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.col === sortCol) {
+          th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+
+      // Render rows
+      const sorted = sortData(data, sortCol, sortDir);
+      elTbody.innerHTML = sorted.map(d => `
+        <tr class="${d.hazardous ? 'is-hazardous' : ''}">
+          <td class="col-name" title="${d.name}">${d.name}</td>
+          <td>${d.date}</td>
+          <td class="col-dist-ld">${fmt(d.distLD, 3)}</td>
+          <td>${fmtKM(d.distKM)}</td>
+          <td>${Math.round(d.diameter)}</td>
+          <td>${fmt(d.velocity, 2)}</td>
+          <td class="col-hazard">
+            ${d.hazardous
+              ? '<i class="fa-solid fa-radiation hazard-yes" title="Potentially Hazardous"></i>'
+              : '<i class="fa-solid fa-circle-check hazard-no" title="Non-Hazardous"></i>'}
+          </td>
+        </tr>
+      `).join('');
+
+      show(elContent);
+    }
+
+    // ── Column header sort ─────────────────────────────────────────────────
+    document.querySelectorAll('#neo-table th').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        if (sortCol === col) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortCol = col;
+          sortDir = 'asc';
+        }
+        renderThisWeek();
+      });
+    });
+
+    // ═══════════════════════════════════════════
+    // SIZE & SPEED — PHASE 3
+    // ═══════════════════════════════════════════
+    let chartSize  = null;
+    let chartSpeed = null;
+
+    // Shared Chart.js defaults tuned for the dark theme
+    const CHART_DEFAULTS = {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#161e28',
+          borderColor: '#2a3f55',
+          borderWidth: 1,
+          titleColor: '#e8f0f8',
+          bodyColor: '#7a9ab8',
+          titleFont: { family: "'Orbitron', monospace", size: 10 },
+          bodyFont:  { family: "'Share Tech Mono', monospace", size: 11 },
+          padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          grid:  { color: 'rgba(30,45,61,0.8)', drawBorder: false },
+          ticks: { color: '#3d5a73', font: { family: "'Share Tech Mono', monospace", size: 10 } },
+          border: { display: false },
+        },
+        y: {
+          grid:  { display: false },
+          ticks: {
+            color: '#7a9ab8',
+            font:  { family: "'Share Tech Mono', monospace", size: 10 },
+            // Trim long names
+            callback(val) {
+              const lbl = this.getLabelForValue(val);
+              return lbl.length > 20 ? lbl.slice(0, 18) + '…' : lbl;
+            },
+          },
+          border: { display: false },
+        },
+      },
+    };
+
+    function buildBarColors(count, highlightIdx, normalColor, highlightColor) {
+      return Array.from({ length: count }, (_, i) =>
+        i === highlightIdx ? highlightColor : normalColor
+      );
+    }
+
+    function renderSizeSpeed() {
+      const data = window.neoData;
+
+      if (!data || data.length === 0) {
+        document.getElementById('ss-no-data').style.display = '';
+        document.getElementById('ss-content').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('ss-no-data').style.display = 'none';
+      document.getElementById('ss-content').style.display = '';
+
+      // ── Sort datasets ──────────────────────────────────────────────────────
+      const bySize  = [...data].sort((a, b) => b.diameter - a.diameter);
+      const bySpeed = [...data].sort((a, b) => b.velocity - a.velocity);
+
+      const maxDiam = bySize[0].diameter;
+      const maxVel  = bySpeed[0].velocity;
+
+      // ── Summary stats ──────────────────────────────────────────────────────
+      document.getElementById('ss-stat-count').textContent   = data.length;
+      document.getElementById('ss-stat-largest').textContent = Math.round(maxDiam);
+      document.getElementById('ss-stat-fastest').textContent = maxVel.toFixed(2);
+
+      // ── Chart canvas heights scale with data count ─────────────────────────
+      const barH  = 28;
+      const minH  = 200;
+      const sizeH = Math.max(minH, bySize.length * barH);
+      const spdH  = Math.max(minH, bySpeed.length * barH);
+
+      // ── Size chart ─────────────────────────────────────────────────────────
+      const sizeCanvas = document.getElementById('chart-size');
+      sizeCanvas.style.height = sizeH + 'px';
+
+      if (chartSize) chartSize.destroy();
+
+      chartSize = new Chart(sizeCanvas, {
+        type: 'bar',
+        data: {
+          labels:   bySize.map(d => d.name),
+          datasets: [{
+            data:            bySize.map(d => Math.round(d.diameter)),
+            backgroundColor: buildBarColors(bySize.length, 0, 'rgba(0,212,255,0.55)', 'rgba(255,170,0,0.85)'),
+            borderColor:     buildBarColors(bySize.length, 0, 'rgba(0,212,255,0.9)',  '#ffaa00'),
+            borderWidth: 1,
+            borderRadius: 2,
+          }],
+        },
+        options: {
+          ...CHART_DEFAULTS,
+          plugins: {
+            ...CHART_DEFAULTS.plugins,
+            tooltip: {
+              ...CHART_DEFAULTS.plugins.tooltip,
+              callbacks: {
+                label: ctx => ` ${ctx.parsed.x} m estimated diameter`,
+              },
+            },
+          },
+          scales: {
+            ...CHART_DEFAULTS.scales,
+            x: {
+              ...CHART_DEFAULTS.scales.x,
+              title: {
+                display: true,
+                text: 'Est. Diameter (m)',
+                color: '#3d5a73',
+                font: { family: "'Share Tech Mono', monospace", size: 10 },
+              },
+            },
+          },
+        },
+      });
+
+      // ── Speed chart ────────────────────────────────────────────────────────
+      const spdCanvas = document.getElementById('chart-speed');
+      spdCanvas.style.height = spdH + 'px';
+
+      if (chartSpeed) chartSpeed.destroy();
+
+      chartSpeed = new Chart(spdCanvas, {
+        type: 'bar',
+        data: {
+          labels:   bySpeed.map(d => d.name),
+          datasets: [{
+            data:            bySpeed.map(d => parseFloat(d.velocity.toFixed(2))),
+            backgroundColor: buildBarColors(bySpeed.length, 0, 'rgba(0,204,102,0.5)', 'rgba(255,68,68,0.85)'),
+            borderColor:     buildBarColors(bySpeed.length, 0, 'rgba(0,204,102,0.9)', '#ff4444'),
+            borderWidth: 1,
+            borderRadius: 2,
+          }],
+        },
+        options: {
+          ...CHART_DEFAULTS,
+          plugins: {
+            ...CHART_DEFAULTS.plugins,
+            tooltip: {
+              ...CHART_DEFAULTS.plugins.tooltip,
+              callbacks: {
+                label: ctx => ` ${ctx.parsed.x} km/s relative velocity`,
+              },
+            },
+          },
+          scales: {
+            ...CHART_DEFAULTS.scales,
+            x: {
+              ...CHART_DEFAULTS.scales.x,
+              title: {
+                display: true,
+                text: 'Velocity (km/s)',
+                color: '#3d5a73',
+                font: { family: "'Share Tech Mono', monospace", size: 10 },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // Render when the tab is clicked (after data is ready)
+    // Also re-render if data wasn't ready yet when tab was first opened
+    let sizeSpeedRendered = false;
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === 'size-speed') {
+        btn.addEventListener('click', () => {
+          // Small rAF delay so the panel is visible before Chart.js measures canvas
+          requestAnimationFrame(() => renderSizeSpeed());
+          sizeSpeedRendered = true;
+        });
+      }
+    });
+
+    // ═══════════════════════════════════════════
+    // SCHEDULE — PHASE 4 (SBDB lazy load)
+    // ═══════════════════════════════════════════
+    window.sbdbData  = null;   // null = not yet fetched
+    let schedSortCol = 'cd';
+    let schedSortDir = 'asc';
+
+    const CORS_PROXY = 'https://api.codetabs.com/v1/proxy/?quest=';
+    const SBDB_BASE  = 'https://ssd-api.jpl.nasa.gov/cad.api';
+    // AU → LD conversion: 1 AU ≈ 389.17 LD
+    const AU_TO_LD   = 389.17;
+    // AU → km: 1 AU = 149,597,870.7 km
+    const AU_TO_KM   = 149_597_870.7;
+
+    const elSchedLoading = document.getElementById('loading-schedule');
+    const elSchedError   = document.getElementById('error-schedule');
+    const elSchedErrMsg  = document.getElementById('error-schedule-msg');
+    const elSchedContent = document.getElementById('content-schedule');
+    const elSchedTbody   = document.getElementById('sched-tbody');
+    const elMonthlySumm  = document.getElementById('monthly-summary');
+    const elSchedTotal   = document.getElementById('sched-stat-total');
+    const elSchedMonths  = document.getElementById('sched-stat-months');
+    const elSchedRange   = document.getElementById('sched-range-label');
+    const elDistFilter   = document.getElementById('sched-dist-filter');
+
+    async function fetchSbdbData() {
+      show(elSchedLoading);
+      hide(elSchedError);
+      hide(elSchedContent);
+
+      try {
+        // SBDB uses AU for distances internally; request a generous window and filter client-side
+        // Route through CORS proxy — JPL APIs don't send Access-Control-Allow-Origin headers
+        const target = `${SBDB_BASE}?dist-max=0.1AU&date-min=2026-04-01&date-max=2027-04-01&sort=date&limit=500&diameter=true`;
+        const resp = await fetch(CORS_PROXY + encodeURIComponent(target));
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+
+        // json.fields = array of field names; json.data = array of value arrays
+        const fields = json.fields;
+        const idx    = f => fields.indexOf(f);
+
+        window.sbdbData = (json.data || []).map(row => {
+          const distAU = parseFloat(row[idx('dist')]);
+          return {
+            des:      row[idx('des')],
+            cd:       row[idx('cd')],           // e.g. "2026-Apr-03 12:34"
+            dist:     distAU * AU_TO_LD,        // LD
+            dist_km:  distAU * AU_TO_KM,        // km
+            diameter: row[idx('diameter')] ? parseFloat(row[idx('diameter')]) * 1000 : null, // km→m
+          };
+        });
+
+        renderSchedule();
+      } catch (err) {
+        hide(elSchedLoading);
+        elSchedErrMsg.textContent = `Could not retrieve SBDB data: ${err.message}`;
+        show(elSchedError);
+      }
+    }
+
+    function schedSortData(data, col, dir) {
+      return [...data].sort((a, b) => {
+        let va = a[col], vb = b[col];
+        if (va == null) va = dir === 'asc' ?  Infinity : -Infinity;
+        if (vb == null) vb = dir === 'asc' ?  Infinity : -Infinity;
+        if (typeof va === 'string') return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        return dir === 'asc' ? va - vb : vb - va;
+      });
+    }
+
+    function renderSchedule() {
+      hide(elSchedLoading);
+      hide(elSchedError);
+
+      const maxLD   = parseFloat(elDistFilter.value);
+      const rawData = window.sbdbData || [];
+
+      // Apply distance filter
+      const data = maxLD >= 9999
+        ? rawData
+        : rawData.filter(d => d.dist <= maxLD);
+
+      // Monthly counts
+      const monthCounts = {};
+      const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      data.forEach(d => {
+        // cd format: "2026-Apr-03 12:34" — parse year+month
+        const parts = d.cd.split('-');
+        const key   = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : d.cd.slice(0, 8);
+        monthCounts[key] = (monthCounts[key] || 0) + 1;
+      });
+
+      const monthKeys = Object.keys(monthCounts).sort();
+
+      // Stats
+      elSchedTotal.textContent  = data.length;
+      elSchedMonths.textContent = monthKeys.length;
+      elSchedRange.textContent  = 'Apr 2026 → Apr 2027';
+
+      // Monthly pills
+      elMonthlySumm.innerHTML = monthKeys.length
+        ? monthKeys.map(k => {
+            const [yr, mon] = k.split('-');
+            return `<div class="month-pill"><span>${mon} ${yr}</span><span class="pill-count">${monthCounts[k]}</span></div>`;
+          }).join('')
+        : '<span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">No approaches in this range.</span>';
+
+      // Update sort headers
+      document.querySelectorAll('#sched-table th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.scol === schedSortCol) {
+          th.classList.add(schedSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+
+      // Render rows
+      const sorted = schedSortData(data, schedSortCol, schedSortDir);
+      elSchedTbody.innerHTML = sorted.map(d => `
+        <tr>
+          <td class="col-name" title="${d.des}">${d.des}</td>
+          <td>${d.cd}</td>
+          <td class="col-dist-ld">${d.dist.toFixed(3)}</td>
+          <td>${fmtKM(d.dist_km)}</td>
+          <td>${d.diameter != null ? Math.round(d.diameter) + ' m' : '<span style="color:var(--text-muted)">—</span>'}</td>
+        </tr>
+      `).join('');
+
+      show(elSchedContent);
+    }
+
+    // Column sort
+    document.querySelectorAll('#sched-table th').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.scol;
+        if (schedSortCol === col) {
+          schedSortDir = schedSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          schedSortCol = col;
+          schedSortDir = 'asc';
+        }
+        renderSchedule();
+      });
+    });
+
+    // Distance filter change — re-render from cache, no re-fetch
+    elDistFilter.addEventListener('change', () => {
+      if (window.sbdbData !== null) renderSchedule();
+    });
+
+    // Lazy load: fetch only when tab is first clicked
+    let sbdbFetched = false;
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === 'schedule') {
+        btn.addEventListener('click', () => {
+          if (!sbdbFetched) {
+            sbdbFetched = true;
+            fetchSbdbData();
+          }
+        });
+      }
+    });
+
+    // ═══════════════════════════════════════════
+    // IMPACT RISK — PHASE 5 (Sentry lazy load)
+    // ═══════════════════════════════════════════
+    window.sentryData = null;
+    let irSortCol = 'ps';
+    let irSortDir = 'desc';
+
+    const SENTRY_BASE = 'https://ssd-api.jpl.nasa.gov/sentry.api';
+
+    const elSentryLoading = document.getElementById('loading-sentry');
+    const elSentryError   = document.getElementById('error-sentry');
+    const elSentryErrMsg  = document.getElementById('error-sentry-msg');
+    const elSentryContent = document.getElementById('content-sentry');
+    const elSentryTbody   = document.getElementById('sentry-tbody');
+    const elIrTotal       = document.getElementById('ir-stat-total');
+    const elIrNonzero     = document.getElementById('ir-stat-nonzero');
+    const elIrHighestTs   = document.getElementById('ir-stat-highest-ts');
+
+    async function fetchSentryData() {
+      show(elSentryLoading);
+      hide(elSentryError);
+      hide(elSentryContent);
+
+      try {
+        // Route through CORS proxy — JPL APIs don't send Access-Control-Allow-Origin headers
+        const resp = await fetch(CORS_PROXY + encodeURIComponent(SENTRY_BASE));
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+
+        // Sentry field names: ts_max (not ts), ps_cum (not ps), fullname (not name)
+        window.sentryData = (json.data || []).map(d => ({
+          des:      d.des,
+          name:     d.fullname || d.des,
+          ip:       parseFloat(d.ip),
+          ts:       parseInt(d.ts_max, 10),
+          ps:       parseFloat(d.ps_cum),
+          diameter: d.diameter ? parseFloat(d.diameter) * 1000 : null, // km → m
+          range:    d.range || '—',
+        }));
+
+        renderImpactRisk();
+      } catch (err) {
+        hide(elSentryLoading);
+        elSentryErrMsg.textContent = `Could not retrieve Sentry data: ${err.message}`;
+        show(elSentryError);
+      }
+    }
+
+    // Torino scale → CSS class
+    function torinoClass(ts) {
+      if (ts === 0)           return 'torino-0';
+      if (ts >= 1 && ts <= 3) return 'torino-low';
+      if (ts >= 4 && ts <= 7) return 'torino-mid';
+      return 'torino-high';
+    }
+
+    // Palermo scale → CSS class
+    function palermoClass(ps) {
+      if (ps < -2)  return 'palermo-neg';
+      if (ps < 0)   return 'palermo-warn';
+      return 'palermo-crit';
+    }
+
+    // Format impact probability as percentage with mini bar
+    function fmtProb(ip) {
+      const pct = ip * 100;
+      // Bar width: log scale so tiny probabilities are still visible
+      const barW = Math.max(2, Math.min(120, Math.log10(ip + 1e-12) * -12 + 2));
+      const display = pct < 0.001
+        ? ip.toExponential(2)
+        : pct.toFixed(pct < 0.1 ? 4 : 2) + '%';
+      return `<div class="prob-bar-wrap">
+        <div class="prob-bar" style="width:${barW}px;"></div>
+        <span class="prob-val">${display}</span>
+      </div>`;
+    }
+
+    function irSortData(data) {
+      return [...data].sort((a, b) => {
+        let va = a[irSortCol], vb = b[irSortCol];
+        if (va == null) va = irSortDir === 'asc' ?  Infinity : -Infinity;
+        if (vb == null) vb = irSortDir === 'asc' ?  Infinity : -Infinity;
+        if (typeof va === 'string') return irSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        return irSortDir === 'asc' ? va - vb : vb - va;
+      });
+    }
+
+    function renderImpactRisk() {
+      hide(elSentryLoading);
+      hide(elSentryError);
+
+      const data = window.sentryData || [];
+
+      // Stats
+      const nonzeroTs   = data.filter(d => d.ts > 0).length;
+      const highestTs   = data.reduce((m, d) => Math.max(m, d.ts), 0);
+
+      elIrTotal.textContent     = data.length;
+      elIrNonzero.textContent   = nonzeroTs;
+      elIrHighestTs.textContent = highestTs;
+
+      // Update sort headers
+      document.querySelectorAll('#sentry-table th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.ircol === irSortCol) {
+          th.classList.add(irSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+
+      const sorted = irSortData(data);
+      elSentryTbody.innerHTML = sorted.map(d => `
+        <tr>
+          <td class="col-name" title="${d.name}">${d.name}</td>
+          <td>${fmtProb(d.ip)}</td>
+          <td style="text-align:center;">
+            <span class="torino-badge ${torinoClass(d.ts)}" title="Torino Scale ${d.ts}">${d.ts}</span>
+          </td>
+          <td class="${palermoClass(d.ps)}">${isNaN(d.ps) ? '—' : d.ps.toFixed(2)}</td>
+          <td>${d.diameter != null ? Math.round(d.diameter) + ' m' : '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td style="color:var(--text-secondary);">${d.range}</td>
+        </tr>
+      `).join('');
+
+      show(elSentryContent);
+    }
+
+    // Column sort listeners
+    document.querySelectorAll('#sentry-table th').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.ircol;
+        if (irSortCol === col) {
+          irSortDir = irSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          irSortCol = col;
+          // Numeric cols default desc (highest risk first); name/range default asc
+          irSortDir = ['des', 'range'].includes(col) ? 'asc' : 'desc';
+        }
+        renderImpactRisk();
+      });
+    });
+
+    // Lazy load on first click
+    let sentryFetched = false;
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === 'impact-risk') {
+        btn.addEventListener('click', () => {
+          if (!sentryFetched) {
+            sentryFetched = true;
+            fetchSentryData();
+          }
+        });
+      }
+    });
+
+    // ═══════════════════════════════════════════
+    // MISS DISTANCE GLOBE — PHASE 6
+    // ═══════════════════════════════════════════
+    let globeInstance  = null;
+    let globeInitDone  = false;
+
+    // Max visual altitude as a fraction of globe radius
+    const GLOBE_MAX_ALT = 0.6;
+
+    // Non-linear altitude mapping from spec
+    function missDistToAlt(distLD, maxLD) {
+      return (Math.log1p(distLD) / Math.log1p(maxLD)) * GLOBE_MAX_ALT;
+    }
+
+    // Deterministic lat/lng spread from object id (purely illustrative)
+    // Uses FNV-1a with unsigned ops so values are evenly spread across both hemispheres
+    function pseudoLatLng(seed) {
+      // FNV-1a hash — good avalanche, works on any string length
+      let h = 2166136261;
+      for (let i = 0; i < seed.length; i++) {
+        h ^= seed.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;  // >>> 0 keeps unsigned
+      }
+      // Derive a second independent value by mixing h further
+      let h2 = h ^ 0xdeadbeef;
+      h2 = Math.imul(h2, 0x45d9f3b) >>> 0;
+      h2 ^= h2 >>> 16;
+      h2 = h2 >>> 0;
+
+      const lat = (h  / 4294967295) * 160 - 80;   // −80 to +80
+      const lng = (h2 / 4294967295) * 360 - 180;  // −180 to +180
+      return { lat, lng };
+    }
+
+    function buildGlobePoints(neoData) {
+      const maxLD = Math.max(...neoData.map(d => d.distLD), 1);
+
+      // Moon reference dot at exactly 1.0 LD
+      const moonAlt = missDistToAlt(1.0, maxLD);
+      const moon = {
+        id:    '__moon__',
+        name:  'Moon (reference)',
+        lat:   23.5,
+        lng:   45,
+        alt:   moonAlt,
+        color: '#cccccc',
+        size:  0.6,
+        isMoon: true,
+      };
+
+      const asteroids = neoData.map(d => {
+        const { lat, lng } = pseudoLatLng(d.id);
+        return {
+          ...d,
+          lat,
+          lng,
+          alt:   missDistToAlt(d.distLD, maxLD),
+          color: d.hazardous ? '#ff4444' : '#00d4ff',
+          size:  d.hazardous ? 0.45 : 0.3,
+          isMoon: false,
+        };
+      });
+
+      return [moon, ...asteroids];
+    }
+
+    function showGlobeDetail(pt) {
+      if (pt.isMoon) return;
+      document.getElementById('globe-detail-name').textContent = pt.name;
+      document.getElementById('gd-dist').textContent  = pt.distLD.toFixed(3) + ' LD';
+      document.getElementById('gd-km').textContent    = fmtKM(pt.distKM) + ' km';
+      document.getElementById('gd-diam').textContent  = Math.round(pt.diameter) + ' m';
+      document.getElementById('gd-vel').textContent   = pt.velocity.toFixed(2) + ' km/s';
+      document.getElementById('gd-date').textContent  = pt.date;
+      const hazEl = document.getElementById('gd-haz');
+      hazEl.textContent  = pt.hazardous ? 'YES' : 'NO';
+      hazEl.className    = 'detail-value ' + (pt.hazardous ? 'hazard-yes' : 'hazard-no');
+      document.getElementById('globe-detail').classList.add('visible');
+    }
+
+    // ─── Sun position + day/night shader ────────────────────────────────────
+    function getSubsolarPoint() {
+      const now = new Date();
+
+      // Subsolar longitude via solar noon offset from Greenwich
+      const solarNoon = SunCalc.getTimes(now, 0, 0).solarNoon;
+      const diffHours = (now - solarNoon) / 3_600_000;
+      let subLng = -diffHours * 15;
+      subLng = ((subLng + 540) % 360) - 180; // normalise to [-180, 180]
+
+      // Subsolar latitude = solar declination.
+      // At lat=0 at solar noon: sin(alt) = cos(dec)  →  dec = π/2 − alt
+      const pos0   = SunCalc.getPosition(now, 0, subLng);
+      const decAbs = Math.PI / 2 - pos0.altitude;
+      const posN   = SunCalc.getPosition(now, 1, subLng);
+      const subLat = (posN.altitude > pos0.altitude ? 1 : -1) *
+                     decAbs * 180 / Math.PI;
+
+      return { lat: subLat, lng: subLng };
+    }
+
+    // Converts subsolar lat/lng to the 3-D unit vector globe.gl uses
+    // (x = cos(φ)sin(λ), y = sin(φ), z = cos(φ)cos(λ))
+    function subsolarToVec3(lat, lng) {
+      const phi    = lat * Math.PI / 180;
+      const lambda = lng * Math.PI / 180;
+      return {
+        x: Math.cos(phi) * Math.sin(lambda),
+        y: Math.sin(phi),
+        z: Math.cos(phi) * Math.cos(lambda),
+      };
+    }
+
+    let sunLightInterval = null;
+    let dayNightMaterial = null; // custom ShaderMaterial placed on the globe mesh
+    let sunDirUniform    = null; // THREE.Vector3 reference inside the uniform
+
+    function setupDayNightShader() {
+      const scene  = globeInstance.scene();
+      const loader = new THREE.TextureLoader();
+      loader.crossOrigin = 'anonymous';
+
+      const dayTex   = loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
+      const nightTex = loader.load('https://unpkg.com/three-globe/example/img/earth-night.jpg');
+
+      sunDirUniform = new THREE.Vector3(1, 0, 0); // placeholder; updated below
+
+      dayNightMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          dayTexture:   { value: dayTex },
+          nightTexture: { value: nightTex },
+          sunDirection: { value: sunDirUniform },
+        },
+        vertexShader: `
+          varying vec3 vNormal;
+          varying vec2 vUv;
+          void main() {
+            // World-space normal so sun direction (also world-space) stays fixed
+            // as the globe rotates. normalMatrix is view-space — don't use it here.
+            vNormal = normalize(mat3(modelMatrix) * normal);
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D dayTexture;
+          uniform sampler2D nightTexture;
+          uniform vec3 sunDirection;
+          varying vec3 vNormal;
+          varying vec2 vUv;
+          void main() {
+            // cosAngle: +1 = facing sun (full day), -1 = facing away (full night)
+            float cosAngle = dot(vNormal, normalize(sunDirection));
+            // Smooth terminator band (~12° wide)
+            float blend = smoothstep(-0.1, 0.1, cosAngle);
+            vec4 day   = texture2D(dayTexture,   vUv);
+            vec4 night = texture2D(nightTexture, vUv);
+            // Day side: full brightness; night side: dim city lights (×0.7)
+            gl_FragColor = mix(night * 0.7, day, blend);
+          }
+        `,
+      });
+
+      // Replace the material on the main globe sphere mesh only.
+      // The globe sphere has a texture map; the atmosphere mesh does not.
+      scene.traverse(obj => {
+        if (obj.isMesh &&
+            obj.geometry && obj.geometry.type === 'SphereGeometry' &&
+            obj.material  && obj.material.map) {
+          obj.material = dayNightMaterial;
+        }
+      });
+    }
+
+    function updateSunLight() {
+      if (!globeInstance) return;
+
+      const { lat, lng } = getSubsolarPoint();
+      const { x, y, z } = subsolarToVec3(lat, lng);
+
+      // Update the shader's sun direction uniform
+      if (sunDirUniform) sunDirUniform.set(x, y, z);
+
+      // Keep scene lights in sync for the atmosphere glow
+      const scene = globeInstance.scene();
+      if (!scene) return;
+      scene.traverse(obj => {
+        if (obj.isDirectionalLight) {
+          obj.position.set(x, y, z).normalize().multiplyScalar(300);
+          obj.intensity = 1.0;
+        }
+        if (obj.isAmbientLight) {
+          obj.intensity = 0.1;
+        }
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function initGlobe() {
+      if (globeInitDone) return;
+      globeInitDone = true;
+
+      const data   = window.neoData;
+      const points = buildGlobePoints(data);
+
+      const container = document.getElementById('globe-el');
+
+      globeInstance = Globe()(container)
+        .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+        .pointsData(points)
+        .pointLat('lat')
+        .pointLng('lng')
+        .pointAltitude('alt')
+        .pointColor('color')
+        .pointRadius('size')
+        .pointResolution(8)
+        .pointLabel(pt => pt.isMoon
+          ? `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#ccc;background:rgba(13,17,23,0.9);padding:6px 10px;border-radius:4px;border:1px solid #444;">Moon — 1.0 LD reference</div>`
+          : `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e8f0f8;background:rgba(13,17,23,0.9);padding:6px 10px;border-radius:4px;border:1px solid #2a3f55;">${pt.name}<br><span style="color:#7a9ab8;">${pt.distLD.toFixed(3)} LD · ${pt.velocity.toFixed(1)} km/s</span></div>`
+        )
+        .onPointClick(pt => showGlobeDetail(pt))
+        .atmosphereColor('#00d4ff')
+        .atmosphereAltitude(0.12);
+
+      // Set initial camera position
+      globeInstance.pointOfView({ lat: 20, lng: 0, altitude: 2.2 }, 0);
+
+      // Fix centering and wait for globe.gl's Three.js scene to be fully built
+      // before we inject the day/night shader and position the sun.
+      setTimeout(() => {
+        globeInstance
+          .width(container.offsetWidth)
+          .height(container.offsetHeight);
+
+        setupDayNightShader(); // inject custom GLSL material onto globe sphere
+        updateSunLight();      // point sun at real current position
+        if (sunLightInterval) clearInterval(sunLightInterval);
+        sunLightInterval = setInterval(updateSunLight, 60_000);
+      }, 100);
+
+      // Count label
+      document.getElementById('globe-count-label').textContent =
+        `${data.length} asteroid${data.length !== 1 ? 's' : ''} plotted`;
+    }
+
+    function showGlobe() {
+      document.getElementById('globe-no-data-wrap').style.display = 'none';
+      document.getElementById('globe-wrap').style.display = '';
+      // rAF so container is measured before Globe() initialises
+      requestAnimationFrame(() => requestAnimationFrame(() => initGlobe()));
+    }
+
+    // If NeoWs data is already loaded when the tab is clicked, init immediately
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === 'miss-distance') {
+        btn.addEventListener('click', () => {
+          if (window.neoData && window.neoData.length > 0) showGlobe();
+        });
+      }
+    });
+
+    // "Load Asteroid Data" button shown when data hasn't fetched yet
+    document.getElementById('globe-trigger-btn').addEventListener('click', () => {
+      document.getElementById('globe-no-data-msg').textContent = 'Fetching…';
+      document.getElementById('globe-trigger-btn').style.display = 'none';
+      if (!window.neoData || window.neoData.length === 0) {
+        fetchNeoData().then(() => {
+          if (window.neoData && window.neoData.length > 0) showGlobe();
+        });
+      } else {
+        showGlobe();
+      }
+    });
+
+    // Also auto-show globe after NeoWs fetch completes if globe tab is active
+    const _origFetchNeo = fetchNeoData;
+    // Patch renderThisWeek to also show globe if tab is open
+    const _origRenderThisWeek = renderThisWeek;
+    function renderThisWeekPatched() {
+      _origRenderThisWeek();
+      // If the miss-distance tab is currently active, init the globe now
+      const activeTab = document.querySelector('.tab-btn.active');
+      if (activeTab && activeTab.dataset.tab === 'miss-distance' && !globeInitDone) {
+        showGlobe();
+      }
+    }
+    // Swap out — fetchNeoData calls renderThisWeek by name so we reassign it
+    // eslint-disable-next-line no-global-assign
+    renderThisWeek = renderThisWeekPatched;
+
+    document.getElementById('globe-close-btn').addEventListener('click', () => {
+      document.getElementById('globe-detail').classList.remove('visible');
+    });
+
+    // ═══════════════════════════════════════════
+    // BOOT
+    // ═══════════════════════════════════════════
+    fetchNeoData();
+  </script>
+
+</body>
+</html>
