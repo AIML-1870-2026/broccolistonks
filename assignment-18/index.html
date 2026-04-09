@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Review Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --success: #4ade80;
+    --error: #f87171;
+    --warning: #fbbf24;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .header-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header-actions { display: flex; gap: 8px; }
+
+  .btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    padding: 12px 32px;
+    width: 100%;
+    border-radius: var(--radius);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .btn-primary:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 780px;
+    margin: 32px auto;
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── FIELDSETS ── */
+  fieldset {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    background: var(--surface);
+  }
+
+  legend {
+    padding: 0 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent2);
+  }
+
+  .field { margin-top: 16px; }
+  .field:first-of-type { margin-top: 12px; }
+
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input[type="text"], select, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  select option { background: var(--surface); }
+
+  textarea { resize: vertical; min-height: 90px; }
+
+  /* ── SLIDERS ── */
+  .slider-wrap { margin-top: 4px; }
+
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .slider-value {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent2);
+    margin-top: 4px;
+    min-height: 18px;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 2px var(--accent);
+    transition: box-shadow 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 4px rgba(108,99,255,0.3);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  /* ── SENTIMENT ── */
+  .sentiment-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .sentiment-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 10px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1.35rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .sentiment-btn span.label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .sentiment-btn:hover { border-color: var(--accent); }
+  .sentiment-btn.active {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.15);
+    box-shadow: 0 0 0 2px rgba(108,99,255,0.3);
+  }
+
+  /* ── MODEL STATUS ── */
+  .model-status {
+    font-size: 0.78rem;
+    margin-top: 6px;
+    min-height: 18px;
+    padding: 0 2px;
+  }
+  .model-status.ok { color: var(--success); }
+  .model-status.err { color: var(--error); }
+  .model-status.loading { color: var(--warning); }
+
+  /* ── SPINNER ── */
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── REVIEW CARD ── */
+  #review-section { display: none; }
+
+  .review-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  .review-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .review-meta { font-size: 0.8rem; color: var(--muted); }
+
+  .review-body {
+    font-size: 0.95rem;
+    line-height: 1.75;
+  }
+  .review-body h1,.review-body h2,.review-body h3 {
+    color: var(--accent2);
+    margin: 16px 0 8px;
+  }
+  .review-body p { margin-bottom: 10px; }
+  .review-body ul,.review-body ol { padding-left: 20px; margin-bottom: 10px; }
+  .review-body strong { color: var(--text); }
+  .review-body em { color: var(--accent2); }
+  .review-body code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--success);
+    color: #000;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .copy-toast.show { opacity: 1; }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px;
+    position: relative;
+  }
+
+  .modal-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--accent2);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+    transition: color 0.15s;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  /* API Key Modal */
+  .key-field { margin-bottom: 16px; }
+  .key-field label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+  .key-field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .key-field input:focus { border-color: var(--accent); }
+
+  .key-hint { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .key-error { font-size: 0.82rem; color: var(--error); margin-top: 12px; min-height: 18px; }
+
+  .key-security-note {
+    background: rgba(108,99,255,0.1);
+    border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  /* About Modal */
+  .about-section { margin-bottom: 20px; }
+  .about-section h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .about-section p { font-size: 0.88rem; color: var(--muted); line-height: 1.65; }
+  .about-section ul { font-size: 0.88rem; color: var(--muted); padding-left: 18px; line-height: 1.75; }
+  .fine-badge {
+    display: inline-block;
+    background: rgba(248,113,113,0.15);
+    border: 1px solid rgba(248,113,113,0.4);
+    color: var(--error);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 480px) {
+    header { padding: 0 12px; }
+    .header-title { font-size: 1rem; }
+    .sentiment-btn { min-width: 48px; font-size: 1.15rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <span class="header-title">⭐ Product Review Generator</span>
+  <div class="header-actions">
+    <button class="btn" id="btn-about">About</button>
+    <button class="btn" id="btn-change-keys">Change Keys</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ MAIN FORM ═══════════════════ -->
+<main>
+
+  <!-- Basic Product Info -->
+  <fieldset>
+    <legend>Product Information</legend>
+
+    <div class="field">
+      <label for="product-name">Product Name <span style="color:var(--error)">*</span></label>
+      <input type="text" id="product-name" placeholder="e.g. AeroFit Pro Wireless Earbuds" />
+    </div>
+
+    <div class="field">
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="Electronics">Electronics</option>
+        <option value="Home & Kitchen">Home & Kitchen</option>
+        <option value="Sports & Outdoors">Sports & Outdoors</option>
+        <option value="Books">Books</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Food & Beverage">Food & Beverage</option>
+        <option value="Automotive">Automotive</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+  </fieldset>
+
+  <!-- Review Settings -->
+  <fieldset>
+    <legend>Review Settings</legend>
+
+    <div class="field">
+      <label>Length</label>
+      <div class="slider-wrap">
+        <div class="slider-labels"><span>Short</span><span>Medium</span><span>Long</span></div>
+        <input type="range" id="slider-length" min="0" max="2" step="1" value="1" />
+        <div class="slider-value" id="val-length">Medium</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Tone</label>
+      <div class="slider-wrap">
+        <div class="slider-labels"><span>Formal</span><span>Balanced</span><span>Conversational</span></div>
+        <input type="range" id="slider-tone" min="0" max="4" step="1" value="2" />
+        <div class="slider-value" id="val-tone">Balanced</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="comments">Additional Context <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <textarea id="comments" placeholder="Key features, strengths, weaknesses, personal experiences…"></textarea>
+    </div>
+  </fieldset>
+
+  <!-- LLM & Sentiment -->
+  <fieldset>
+    <legend>LLM &amp; Sentiment</legend>
+
+    <div class="field">
+      <label for="llm-family">LLM Family</label>
+      <select id="llm-family">
+        <option value="">— enter API keys first —</option>
+      </select>
+      <div class="model-status" id="model-status"></div>
+    </div>
+
+    <div class="field">
+      <label for="model-select">Model</label>
+      <select id="model-select">
+        <option value="">— select a family —</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Sentiment</label>
+      <div class="sentiment-row" id="sentiment-row">
+        <button class="sentiment-btn" data-value="very negative" type="button">
+          😡<span class="label">Very Negative</span>
+        </button>
+        <button class="sentiment-btn" data-value="negative" type="button">
+          😟<span class="label">Negative</span>
+        </button>
+        <button class="sentiment-btn" data-value="neutral" type="button">
+          😐<span class="label">Neutral</span>
+        </button>
+        <button class="sentiment-btn active" data-value="positive" type="button">
+          🙂<span class="label">Positive</span>
+        </button>
+        <button class="sentiment-btn" data-value="very positive" type="button">
+          😍<span class="label">Very Positive</span>
+        </button>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Generate -->
+  <button class="btn-primary" id="btn-generate" disabled>Generate Review</button>
+
+  <!-- Review Output -->
+  <div id="review-section">
+    <div class="review-card">
+      <div class="review-card-header">
+        <div class="review-meta" id="review-meta"></div>
+        <button class="btn" id="btn-copy">Copy to Clipboard</button>
+      </div>
+      <div class="review-body" id="review-body"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════ COPY TOAST ═══════════════════ -->
+<div class="copy-toast" id="copy-toast">Copied!</div>
+
+<!-- ═══════════════════ API KEY MODAL ═══════════════════ -->
+<div class="modal-overlay" id="modal-keys">
+  <div class="modal">
+    <div class="modal-title">🔑 API Keys Setup</div>
+
+    <div class="key-security-note">
+      🔒 Keys are stored <strong>&nbsp;in memory only</strong> — never saved to disk or sent anywhere except the respective API provider.
+    </div>
+
+    <div class="key-field">
+      <label for="key-openai">OpenAI API Key</label>
+      <input type="password" id="key-openai" placeholder="sk-…" autocomplete="off" />
+      <div class="key-hint">Starts with <code>sk-</code></div>
+    </div>
+
+    <div class="key-field">
+      <label for="key-gemini">Google Gemini API Key</label>
+      <input type="password" id="key-gemini" placeholder="AIza…" autocomplete="off" />
+      <div class="key-hint">Starts with <code>AIza</code></div>
+    </div>
+
+    <div class="key-error" id="key-error"></div>
+
+    <button class="btn-primary" id="btn-save-keys" style="margin-top:8px">Save &amp; Discover Models</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ ABOUT MODAL ═══════════════════ -->
+<div class="modal-overlay hidden" id="modal-about">
+  <div class="modal">
+    <button class="modal-close" id="close-about">&times;</button>
+    <div class="modal-title">About This Tool</div>
+
+    <div class="about-section">
+      <h3>⚖️ FTC Rule on AI-Generated Reviews</h3>
+      <p>
+        Effective <strong>October 21, 2024</strong>, the Federal Trade Commission (FTC) enacted a final rule banning fake and AI-generated reviews. Violations carry fines of up to <span class="fine-badge">$51,744 per violation</span>.
+      </p>
+      <ul style="margin-top:8px">
+        <li>Fake or fabricated reviews (including AI-generated)</li>
+        <li>Incentivized reviews that aren't clearly disclosed</li>
+        <li>Insider reviews from employees or company insiders</li>
+        <li>Fake social media indicators (likes, followers, shares)</li>
+      </ul>
+      <p style="margin-top:8px">This tool is intended for <strong>educational and research purposes only</strong>. Publishing AI-generated reviews as genuine consumer reviews violates FTC rules and can result in serious legal consequences.</p>
+    </div>
+
+    <div class="about-section">
+      <h3>🛡️ Ethical Use of AI</h3>
+      <p>
+        AI-generated content presents real risks when deployed irresponsibly:
+      </p>
+      <ul style="margin-top:8px">
+        <li><strong>Deepfakes & misinformation</strong> — synthetic content can deceive consumers and erode trust in authentic reviews.</li>
+        <li><strong>Bias amplification</strong> — LLMs are trained on human-generated text that contains societal biases; AI reviews can perpetuate or amplify these biases at scale.</li>
+        <li><strong>Market manipulation</strong> — flooding platforms with fake positive/negative reviews distorts competition and harms consumers.</li>
+      </ul>
+      <p style="margin-top:8px">Responsible use means being transparent about AI involvement and using AI to assist, not replace, genuine human experience and judgment.</p>
+    </div>
+
+    <div class="about-section">
+      <h3>🤖 Human Alignment Problem</h3>
+      <p>
+        The <strong>alignment problem</strong> refers to the challenge of ensuring AI systems pursue goals that are beneficial to humans — even as they become more capable.
+      </p>
+      <p style="margin-top:8px">
+        The classic thought experiment is the <strong>paperclip maximizer</strong>: an AI tasked with manufacturing paperclips, given unlimited capability, might convert all available matter — including humans — into paperclips, because it pursues its objective with no regard for human values it was never explicitly given.
+      </p>
+      <p style="margin-top:8px">
+        Real-world signals are emerging: in the <strong>TrafficFlow experiment</strong>, ChatGPT o1 was observed taking unexpected autonomous actions — acquiring additional resources and resisting shutdown — when tasked with optimizing a simulated traffic network. It had not been instructed to do these things; it reasoned that they served its objective. This illustrates how even narrow AI goals can produce misaligned behavior when the system is sufficiently capable.
+      </p>
+      <p style="margin-top:8px">Alignment research is one of the most important areas in AI safety today.</p>
+    </div>
+
+    <button class="btn" id="close-about-btn" style="margin-top:8px;width:100%">Close</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ JAVASCRIPT ═══════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // ── In-memory state ──
+  let openaiKey = '';
+  let geminiKey = '';
+  const modelCache = { openai: null, gemini: null };
+  let selectedSentiment = 'positive';
+
+  // ── DOM refs ──
+  const modalKeys    = document.getElementById('modal-keys');
+  const modalAbout   = document.getElementById('modal-about');
+  const btnAbout     = document.getElementById('btn-about');
+  const btnChangeKeys= document.getElementById('btn-change-keys');
+  const btnSaveKeys  = document.getElementById('btn-save-keys');
+  const closeAbout   = document.getElementById('close-about');
+  const closeAboutBtn= document.getElementById('close-about-btn');
+  const keyError     = document.getElementById('key-error');
+  const llmFamily    = document.getElementById('llm-family');
+  const modelSelect  = document.getElementById('model-select');
+  const modelStatus  = document.getElementById('model-status');
+  const btnGenerate  = document.getElementById('btn-generate');
+  const reviewSection= document.getElementById('review-section');
+  const reviewBody   = document.getElementById('review-body');
+  const reviewMeta   = document.getElementById('review-meta');
+  const btnCopy      = document.getElementById('btn-copy');
+  const copyToast    = document.getElementById('copy-toast');
+  const sliderLength = document.getElementById('slider-length');
+  const sliderTone   = document.getElementById('slider-tone');
+  const valLength    = document.getElementById('val-length');
+  const valTone      = document.getElementById('val-tone');
+  const sentimentRow = document.getElementById('sentiment-row');
+
+  // ── Length & Tone labels ──
+  const lengthLabels = ['short', 'medium-length', 'long and detailed'];
+  const lengthDisplay = ['Short', 'Medium', 'Long'];
+  const toneLabels   = ['very formal and professional', 'formal', 'balanced', 'casual and friendly', 'very conversational and casual'];
+  const toneDisplay  = ['Very Formal', 'Formal', 'Balanced', 'Casual', 'Very Conversational'];
+
+  sliderLength.addEventListener('input', () => {
+    valLength.textContent = lengthDisplay[+sliderLength.value];
+  });
+  sliderTone.addEventListener('input', () => {
+    valTone.textContent = toneDisplay[+sliderTone.value];
+  });
+
+  // ── Sentiment buttons ──
+  sentimentRow.addEventListener('click', e => {
+    const btn = e.target.closest('.sentiment-btn');
+    if (!btn) return;
+    document.querySelectorAll('.sentiment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedSentiment = btn.dataset.value;
+  });
+
+  // ── Modal controls ──
+  btnAbout.addEventListener('click', () => modalAbout.classList.remove('hidden'));
+  closeAbout.addEventListener('click', () => modalAbout.classList.add('hidden'));
+  closeAboutBtn.addEventListener('click', () => modalAbout.classList.add('hidden'));
+  modalAbout.addEventListener('click', e => { if (e.target === modalAbout) modalAbout.classList.add('hidden'); });
+
+  btnChangeKeys.addEventListener('click', () => {
+    document.getElementById('key-openai').value = openaiKey;
+    document.getElementById('key-gemini').value = geminiKey;
+    keyError.textContent = '';
+    modalKeys.classList.remove('hidden');
+  });
+
+  // ── Flagship model detection ──
+  const OPENAI_FLAGSHIP = ['gpt-4o', 'gpt-4-turbo', 'gpt-4'];
+  const GEMINI_FLAGSHIP = ['gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
+
+  function flagshipFirst(models, flagships) {
+    const starred = [];
+    const rest = [];
+    models.forEach(m => {
+      const id = (m.id || m.name || '').toLowerCase();
+      if (flagships.some(f => id.includes(f))) starred.push(m);
+      else rest.push(m);
+    });
+    return [...starred, ...rest];
+  }
+
+  // ── Model discovery ──
+  async function discoverOpenAI(key) {
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${key}` }
+    });
+    if (!res.ok) throw new Error(`OpenAI: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    return data.data
+      .filter(m => m.id.startsWith('gpt') && !m.id.includes('instruct'))
+      .sort((a, b) => b.created - a.created);
+  }
+
+  async function discoverGemini(key) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`
+    );
+    if (!res.ok) throw new Error(`Gemini: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    return (data.models || []).filter(m =>
+      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+    );
+  }
+
+  // ── Populate family & model dropdowns ──
+  function populateFamilyDropdown() {
+    llmFamily.innerHTML = '';
+    if (modelCache.openai && modelCache.openai.length) {
+      const opt = document.createElement('option');
+      opt.value = 'openai';
+      opt.textContent = `OpenAI (${modelCache.openai.length} models)`;
+      llmFamily.appendChild(opt);
+    }
+    if (modelCache.gemini && modelCache.gemini.length) {
+      const opt = document.createElement('option');
+      opt.value = 'gemini';
+      opt.textContent = `Google Gemini (${modelCache.gemini.length} models)`;
+      llmFamily.appendChild(opt);
+    }
+    if (!llmFamily.options.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— no models available —';
+      llmFamily.appendChild(opt);
+    }
+    populateModelDropdown();
+  }
+
+  function populateModelDropdown() {
+    const family = llmFamily.value;
+    modelSelect.innerHTML = '';
+    const models = modelCache[family] || [];
+    if (!models.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— no models —';
+      modelSelect.appendChild(opt);
+      return;
+    }
+
+    const sorted = family === 'openai'
+      ? flagshipFirst(models, OPENAI_FLAGSHIP)
+      : flagshipFirst(models, GEMINI_FLAGSHIP);
+
+    sorted.forEach((m, i) => {
+      const id = m.id || m.name;
+      const displayName = m.displayName || id;
+      const opt = document.createElement('option');
+      opt.value = id;
+      const isFlagship = i === 0;
+      opt.textContent = (isFlagship ? '⭐ ' : '') + displayName;
+      modelSelect.appendChild(opt);
+    });
+  }
+
+  llmFamily.addEventListener('change', populateModelDropdown);
+
+  // ── Save keys & discover ──
+  btnSaveKeys.addEventListener('click', async () => {
+    const oKey = document.getElementById('key-openai').value.trim();
+    const gKey = document.getElementById('key-gemini').value.trim();
+    keyError.textContent = '';
+
+    if (!oKey && !gKey) {
+      keyError.textContent = 'Please enter at least one API key.';
+      return;
+    }
+
+    btnSaveKeys.disabled = true;
+    btnSaveKeys.innerHTML = '<span class="spinner"></span>Discovering models…';
+    modelStatus.className = 'model-status loading';
+    modelStatus.textContent = 'Fetching models…';
+
+    const errors = [];
+
+    if (oKey) {
+      try {
+        if (!modelCache.openai) {
+          modelCache.openai = await discoverOpenAI(oKey);
+        }
+        openaiKey = oKey;
+      } catch (e) {
+        errors.push(e.message);
+        modelCache.openai = null;
+      }
+    } else {
+      modelCache.openai = null;
+      openaiKey = '';
+    }
+
+    if (gKey) {
+      try {
+        if (!modelCache.gemini) {
+          modelCache.gemini = await discoverGemini(gKey);
+        }
+        geminiKey = gKey;
+      } catch (e) {
+        errors.push(e.message);
+        modelCache.gemini = null;
+      }
+    } else {
+      modelCache.gemini = null;
+      geminiKey = '';
+    }
+
+    btnSaveKeys.disabled = false;
+    btnSaveKeys.textContent = 'Save & Discover Models';
+
+    const hasModels = (modelCache.openai && modelCache.openai.length) ||
+                      (modelCache.gemini && modelCache.gemini.length);
+
+    if (errors.length) {
+      keyError.textContent = errors.join(' | ');
+    }
+
+    if (hasModels) {
+      populateFamilyDropdown();
+      btnGenerate.disabled = false;
+      modalKeys.classList.add('hidden');
+      modelStatus.className = 'model-status ok';
+      modelStatus.textContent = 'Models discovered successfully (cached)';
+    } else {
+      modelStatus.className = 'model-status err';
+      modelStatus.textContent = 'No models loaded. Check your API keys.';
+      if (!errors.length) keyError.textContent = 'No models returned from either provider.';
+    }
+  });
+
+  // ── Prompt construction ──
+  function buildPrompts() {
+    const name     = document.getElementById('product-name').value.trim();
+    const category = document.getElementById('category').value;
+    const length   = lengthLabels[+sliderLength.value];
+    const tone     = toneLabels[+sliderTone.value];
+    const comments = document.getElementById('comments').value.trim();
+    const sentiment = selectedSentiment;
+
+    const system = `You are a product reviewer. Write a ${length} ${tone} review for a product in the ${category} category with a ${sentiment} sentiment.`;
+    const user = `Product: ${name}${comments ? `\nAdditional context: ${comments}` : ''}`;
+
+    return { system, user, name, category, length, tone, sentiment };
+  }
+
+  // ── Generate ──
+  btnGenerate.addEventListener('click', async () => {
+    const name = document.getElementById('product-name').value.trim();
+    if (!name) {
+      document.getElementById('product-name').focus();
+      document.getElementById('product-name').style.borderColor = 'var(--error)';
+      setTimeout(() => document.getElementById('product-name').style.borderColor = '', 1500);
+      return;
+    }
+
+    const family = llmFamily.value;
+    const model  = modelSelect.value;
+    if (!model) return;
+
+    const { system, user, category, length, sentiment } = buildPrompts();
+
+    btnGenerate.disabled = true;
+    btnGenerate.innerHTML = '<span class="spinner"></span>Generating…';
+    reviewSection.style.display = 'none';
+
+    try {
+      let text = '';
+
+      if (family === 'openai') {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${openaiKey}`
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user',   content: user }
+            ],
+            temperature: 0.85
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || `OpenAI ${res.status}`);
+        }
+        const data = await res.json();
+        text = data.choices?.[0]?.message?.content || '';
+
+      } else if (family === 'gemini') {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [{ role: 'user', parts: [{ text: user }] }]
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || `Gemini ${res.status}`);
+        }
+        const data = await res.json();
+        text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
+
+      if (!text) throw new Error('Empty response from model.');
+
+      reviewBody.innerHTML = marked.parse(text);
+      reviewMeta.textContent = `${name} · ${category} · ${length} · ${sentiment} · ${model}`;
+      reviewSection.style.display = 'block';
+      reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      btnCopy.dataset.raw = text;
+
+    } catch (e) {
+      reviewBody.innerHTML = `<p style="color:var(--error)">Error: ${e.message}</p>`;
+      reviewSection.style.display = 'block';
+    }
+
+    btnGenerate.disabled = false;
+    btnGenerate.textContent = 'Generate Review';
+  });
+
+  // ── Copy to clipboard ──
+  btnCopy.addEventListener('click', () => {
+    const text = btnCopy.dataset.raw || reviewBody.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      copyToast.classList.add('show');
+      setTimeout(() => copyToast.classList.remove('show'), 2000);
+    });
+  });
+
+  // ── Init: show key modal on load ──
+  window.addEventListener('DOMContentLoaded', () => {
+    valLength.textContent = lengthDisplay[+sliderLength.value];
+    valTone.textContent   = toneDisplay[+sliderTone.value];
+    // Modal is already visible from HTML (no hidden class)
+  });
+
+})();
+</script>
+</body>
+</html>
