@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Switchboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --surface2:   #21262d;
+      --border:     #30363d;
+      --primary:    #58a6ff;
+      --text:       #c9d1d9;
+      --muted:      #8b949e;
+      --green:      #3fb950;
+      --red:        #f85149;
+      --yellow:     #d29922;
+      --openai:     #10a37f;
+      --gemini:     #4285f4;
+      --anthropic:  #cc785c;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #58a6ff, #7c3aed);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header p  { font-size: 0.78rem; color: var(--muted); }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.25rem 1.75rem 3rem;
+    }
+
+    /* ── Notices ── */
+    .notice {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: rgba(210,153,34,.1);
+      border: 1px solid rgba(210,153,34,.3);
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      font-size: 0.82rem; color: var(--yellow);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 0.85rem;
+    }
+    .card-title {
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); margin-bottom: 0.85rem;
+    }
+
+    /* ── Form elements ── */
+    label {
+      display: block; font-size: 0.82rem;
+      font-weight: 500; color: var(--muted); margin-bottom: 0.35rem;
+    }
+    input, textarea, select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.55rem 0.75rem;
+      font-size: 0.88rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 90px; }
+    select option { background: var(--surface2); }
+    input[type="file"] { display: none; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.5rem 1rem; border-radius: 6px;
+      font-size: 0.875rem; font-weight: 500;
+      cursor: pointer; border: 1px solid transparent;
+      transition: all .15s; font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--primary); color: #0d1117; border-color: var(--primary);
+    }
+    .btn-primary:hover:not(:disabled) { background: #79c0ff; }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; color: var(--muted); border-color: var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+    /* ── Toggle segments ── */
+    .seg {
+      display: inline-flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px; overflow: hidden;
+    }
+    .seg button {
+      padding: 0.38rem 0.9rem;
+      background: transparent; border: none;
+      color: var(--muted); cursor: pointer;
+      font-size: 0.82rem; font-family: inherit; font-weight: 500;
+      transition: all .15s;
+    }
+    .seg button.active {
+      background: var(--surface2); color: var(--text);
+    }
+    .seg button.active.c-openai    { color: var(--openai); }
+    .seg button.active.c-gemini    { color: var(--gemini); }
+    .seg button.active.c-anthropic { color: var(--anthropic); }
+
+    /* ── Grids ── */
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+    /* ── Key inputs ── */
+    .key-wrap { position: relative; }
+    .key-wrap input { padding-right: 2.4rem; }
+    .eye-btn {
+      position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 0.2rem; display: flex; align-items: center;
+    }
+
+    /* ── Model panels ── */
+    .model-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem;
+    }
+    .model-box .slot-label {
+      font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .07em;
+      color: var(--muted); margin-bottom: 0.65rem;
+    }
+
+    /* ── CORS / info notices ── */
+    .cors-notice {
+      background: rgba(248,81,73,.08);
+      border: 1px solid rgba(248,81,73,.25);
+      border-radius: 7px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.8rem; color: var(--red);
+      margin-top: 0.65rem;
+      line-height: 1.5;
+    }
+
+    /* ── Prompt layout ── */
+    #prompt-wrap { display: flex; flex-direction: column; gap: 0.75rem; }
+    #prompt-wrap.side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* ── Submit area ── */
+    .submit-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-top: 0.85rem;
+      flex-wrap: wrap;
+    }
+    #submit-status { font-size: 0.82rem; color: var(--yellow); }
+
+    /* ── Response area ── */
+    #response-area {
+      display: grid; gap: 1rem; margin-top: 0.85rem;
+    }
+    #response-area.compare { grid-template-columns: 1fr 1fr; }
+
+    /* ── Response panel ── */
+    .r-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .r-head {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .r-head-left { display: flex; align-items: center; gap: 0.5rem; }
+    .prov-badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.72rem; font-weight: 700;
+      padding: 0.2rem 0.5rem; border-radius: 4px;
+    }
+    .prov-badge.openai    { background: rgba(16,163,127,.15); color: var(--openai); }
+    .prov-badge.gemini    { background: rgba(66,133,244,.15); color: var(--gemini); }
+    .prov-badge.anthropic { background: rgba(204,120,92,.15); color: var(--anthropic); }
+    .r-model-name { font-size: 0.82rem; font-weight: 500; }
+    .r-meta { display: flex; gap: 0.75rem; font-size: 0.72rem; color: var(--muted); }
+    .r-meta span { display: flex; align-items: center; gap: 0.2rem; }
+
+    .r-body {
+      padding: 1rem;
+      max-height: 520px;
+      overflow-y: auto;
+      font-size: 0.88rem; line-height: 1.75;
+    }
+    .r-body.loading {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 110px; color: var(--muted);
+    }
+    .r-body.is-error { color: var(--red); }
+    .r-body pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.9rem;
+      overflow-x: auto;
+      font-size: 0.82rem; line-height: 1.55;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .r-body code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.12em 0.35em;
+      font-size: 0.88em;
+    }
+    .r-body h2, .r-body h3, .r-body h4 {
+      margin: 0.8em 0 0.35em;
+      color: var(--text);
+    }
+    .r-body ul, .r-body ol {
+      margin: 0.4em 0 0.4em 1.5em;
+    }
+    .r-body p { margin: 0.45em 0; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      margin-right: 0.5rem; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── JSON highlighting ── */
+    .jk { color: #79c0ff; }
+    .js { color: #a5d6ff; }
+    .jn { color: #ffa657; }
+    .jb { color: #ff7b72; }
+    .jz { color: #8b949e; }
+
+    /* ── Misc ── */
+    .hidden { display: none !important; }
+    .flex   { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-sm { gap: 0.5rem; }
+    .mt-sm  { margin-top: 0.5rem; }
+
+    .upload-label {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      cursor: pointer;
+    }
+
+    #upload-status {
+      font-size: 0.78rem; margin-top: 0.5rem; color: var(--green);
+    }
+
+    @media (max-width: 760px) {
+      .g2, #response-area.compare { grid-template-columns: 1fr; }
+      #prompt-wrap.side-by-side    { grid-template-columns: 1fr; }
+      main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">⚡</div>
+  <div>
+    <h1>LLM Switchboard</h1>
+    <p>Compare AI models side by side</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- Privacy notice -->
+  <div class="notice">
+    🔒 Keys are held in memory only and cleared when you close or refresh this page.
+  </div>
+
+  <!-- API Keys -->
+  <div class="card">
+    <div class="flex justify-between items-center" style="margin-bottom:.85rem;">
+      <div class="card-title" style="margin-bottom:0;">API Keys</div>
+      <label class="btn btn-ghost upload-label" for="file-input">
+        📁 Upload .env / .csv
+      </label>
+      <input type="file" id="file-input" accept=".env,.csv,.txt">
+    </div>
+    <div class="g3">
+      <div>
+        <label>OpenAI API Key</label>
+        <div class="key-wrap">
+          <input type="password" id="openai-key" placeholder="sk-…" autocomplete="off">
+          <button class="eye-btn" onclick="toggleKey('openai-key')" title="Show/hide">👁</button>
+        </div>
+      </div>
+      <div>
+        <label>Gemini API Key <span style="font-weight:400;color:var(--green);font-size:.75rem;">(free at aistudio.google.com)</span></label>
+        <div class="key-wrap">
+          <input type="password" id="gemini-key" placeholder="AIza…" autocomplete="off">
+          <button class="eye-btn" onclick="toggleKey('gemini-key')" title="Show/hide">👁</button>
+        </div>
+      </div>
+      <div>
+        <label>Anthropic API Key</label>
+        <div class="key-wrap">
+          <input type="password" id="anthropic-key" placeholder="sk-ant-…" autocomplete="off">
+          <button class="eye-btn" onclick="toggleKey('anthropic-key')" title="Show/hide">👁</button>
+        </div>
+      </div>
+    </div>
+    <div id="upload-status"></div>
+  </div>
+
+  <!-- Config toggles -->
+  <div class="card">
+    <div class="flex gap-sm items-center flex-wrap" style="gap:1.25rem;">
+      <div>
+        <div class="card-title" style="margin-bottom:.35rem;">Mode</div>
+        <div class="seg">
+          <button id="mode-compare" class="active" onclick="setMode('compare')">⚖️ Compare</button>
+          <button id="mode-single"               onclick="setMode('single')">💬 Single</button>
+        </div>
+      </div>
+      <div>
+        <div class="card-title" style="margin-bottom:.35rem;">Output</div>
+        <div class="seg">
+          <button id="out-unstructured" class="active" onclick="setOutput('unstructured')">📝 Unstructured</button>
+          <button id="out-structured"               onclick="setOutput('structured')">🔧 Structured JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model selection -->
+  <div class="card">
+    <div class="card-title">Models</div>
+
+    <!-- Compare: two boxes -->
+    <div id="compare-models" class="g2">
+      <div class="model-box">
+        <div class="slot-label">Model A</div>
+        <div class="seg" style="margin-bottom:.65rem;">
+          <button id="a-openai"    class="active c-openai"    onclick="setSlotProvider('a','openai')">OpenAI</button>
+          <button id="a-gemini"                               onclick="setSlotProvider('a','gemini')">Gemini</button>
+          <button id="a-anthropic"                            onclick="setSlotProvider('a','anthropic')">Anthropic</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <select id="a-model" style="flex:1;"></select>
+          <button id="a-fetch-models" class="btn btn-ghost hidden" style="padding:.45rem .7rem;font-size:.78rem;white-space:nowrap;" onclick="fetchGeminiModels('a')">↻ Fetch</button>
+        </div>
+        <div id="a-cors" class="cors-notice hidden">
+          ⚠️ Anthropic's API doesn't allow direct browser requests (CORS).
+          To test Anthropic models you'd need a backend proxy.
+          OpenAI and Gemini work directly from the browser!
+        </div>
+      </div>
+      <div class="model-box">
+        <div class="slot-label">Model B</div>
+        <div class="seg" style="margin-bottom:.65rem;">
+          <button id="b-openai"                               onclick="setSlotProvider('b','openai')">OpenAI</button>
+          <button id="b-gemini"    class="active c-gemini"    onclick="setSlotProvider('b','gemini')">Gemini</button>
+          <button id="b-anthropic"                            onclick="setSlotProvider('b','anthropic')">Anthropic</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <select id="b-model" style="flex:1;"></select>
+          <button id="b-fetch-models" class="btn btn-ghost" style="padding:.45rem .7rem;font-size:.78rem;white-space:nowrap;" onclick="fetchGeminiModels('b')">↻ Fetch</button>
+        </div>
+        <div id="b-cors" class="cors-notice hidden">
+          ⚠️ Anthropic's API doesn't allow direct browser requests (CORS).
+          To test Anthropic models you'd need a backend proxy.
+          OpenAI and Gemini work directly from the browser!
+        </div>
+      </div>
+    </div>
+
+    <!-- Single: one box -->
+    <div id="single-model" class="hidden">
+      <div class="seg" style="margin-bottom:.65rem;">
+        <button id="s-openai"    class="active c-openai"    onclick="setSingleProvider('openai')">OpenAI</button>
+        <button id="s-gemini"                               onclick="setSingleProvider('gemini')">Gemini</button>
+        <button id="s-anthropic"                            onclick="setSingleProvider('anthropic')">Anthropic</button>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;max-width:400px;">
+        <select id="s-model" style="flex:1;"></select>
+        <button id="s-fetch-models" class="btn btn-ghost hidden" style="padding:.45rem .7rem;font-size:.78rem;white-space:nowrap;" onclick="fetchGeminiModels('s')">↻ Fetch</button>
+      </div>
+      <div id="s-cors" class="cors-notice hidden">
+        ⚠️ Anthropic's API doesn't allow direct browser requests (CORS).
+        To test Anthropic models you'd need a backend proxy.
+        OpenAI and Gemini work directly from the browser!
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="card">
+    <div class="flex justify-between items-center" style="margin-bottom:.75rem;">
+      <div class="card-title" style="margin-bottom:0;">Prompt</div>
+      <select id="example-select" style="width:auto;min-width:230px;font-size:.82rem;" onchange="loadExample()">
+        <option value="">Load an example…</option>
+        <option value="titanium">🔩 Titanium for aerospace (structured)</option>
+        <option value="ohms">⚡ Explain Ohm's Law (unstructured)</option>
+        <option value="motors">⚙️ Compare AC and DC motors (structured)</option>
+        <option value="mcu">🤖 Microcontroller for weather station (structured)</option>
+      </select>
+    </div>
+
+    <div id="prompt-wrap">
+      <div>
+        <label>Prompt</label>
+        <textarea id="prompt-input" rows="5" placeholder="Enter your prompt here…"></textarea>
+      </div>
+      <div id="schema-area" class="hidden">
+        <label>JSON Schema</label>
+        <textarea id="schema-input" rows="6" placeholder='{ "type": "object", "properties": { … } }'></textarea>
+      </div>
+    </div>
+
+    <div class="submit-row">
+      <button class="btn btn-primary" id="submit-btn" onclick="handleSubmit()">▶ Run</button>
+      <button class="btn btn-ghost"   onclick="clearAll()">Clear</button>
+      <span id="submit-status"></span>
+    </div>
+  </div>
+
+  <!-- Responses -->
+  <div id="response-area" class="compare hidden"></div>
+
+</main>
+
+<script>
+// ────────────────────────────────────────────────
+//  State
+// ────────────────────────────────────────────────
+const state = {
+  mode:   'compare',
+  output: 'unstructured',
+  prov:   { a: 'openai', b: 'gemini', s: 'openai' }
+};
+
+const MODELS = {
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  gemini:    ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
+  anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001']
+};
+
+const PROVIDERS = ['openai', 'gemini', 'anthropic'];
+
+const EXAMPLES = {
+  titanium: {
+    mode: 'structured',
+    prompt: 'Describe the material properties of titanium relevant to aerospace engineering.',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        name:             { type: 'string' },
+        density_kg_m3:    { type: 'number' },
+        yield_strength_mpa: { type: 'number' },
+        melting_point_c:  { type: 'number' },
+        applications:     { type: 'array', items: { type: 'string' } },
+        advantages:       { type: 'array', items: { type: 'string' } }
+      },
+      required: ['name','density_kg_m3','yield_strength_mpa','melting_point_c','applications','advantages']
+    }, null, 2)
+  },
+  ohms: {
+    mode: 'unstructured',
+    prompt: "Explain Ohm's Law — state the relationship, write the formula, and walk through a practical circuit example.",
+    schema: ''
+  },
+  motors: {
+    mode: 'structured',
+    prompt: 'Compare AC motors and DC motors: describe each type, list their pros and cons, and give typical industrial use cases.',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        ac_motor: {
+          type: 'object',
+          properties: {
+            description: { type: 'string' },
+            pros:        { type: 'array', items: { type: 'string' } },
+            cons:        { type: 'array', items: { type: 'string' } },
+            use_cases:   { type: 'array', items: { type: 'string' } }
+          },
+          required: ['description','pros','cons','use_cases']
+        },
+        dc_motor: {
+          type: 'object',
+          properties: {
+            description: { type: 'string' },
+            pros:        { type: 'array', items: { type: 'string' } },
+            cons:        { type: 'array', items: { type: 'string' } },
+            use_cases:   { type: 'array', items: { type: 'string' } }
+          },
+          required: ['description','pros','cons','use_cases']
+        }
+      },
+      required: ['ac_motor','dc_motor']
+    }, null, 2)
+  },
+  mcu: {
+    mode: 'structured',
+    prompt: 'Recommend the best microcontroller for building a weather station that measures temperature, humidity, barometric pressure, and wind speed.',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        name:               { type: 'string' },
+        manufacturer:       { type: 'string' },
+        price_range:        { type: 'string' },
+        pros:               { type: 'array', items: { type: 'string' } },
+        cons:               { type: 'array', items: { type: 'string' } },
+        key_features:       { type: 'array', items: { type: 'string' } },
+        recommended_sensors:{ type: 'array', items: { type: 'string' } }
+      },
+      required: ['name','manufacturer','price_range','pros','cons','key_features','recommended_sensors']
+    }, null, 2)
+  }
+};
+
+// ────────────────────────────────────────────────
+//  Initialise dropdowns
+// ────────────────────────────────────────────────
+function fillDropdown(id, provider) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = MODELS[provider].map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+fillDropdown('a-model', 'openai');
+fillDropdown('b-model', 'gemini');
+fillDropdown('s-model', 'openai');
+
+// ────────────────────────────────────────────────
+//  UI: Mode / Output toggles
+// ────────────────────────────────────────────────
+function setMode(m) {
+  state.mode = m;
+  document.getElementById('mode-compare').classList.toggle('active', m === 'compare');
+  document.getElementById('mode-single').classList.toggle('active',  m === 'single');
+  document.getElementById('compare-models').classList.toggle('hidden', m !== 'compare');
+  document.getElementById('single-model').classList.toggle('hidden',   m !== 'single');
+  const ra = document.getElementById('response-area');
+  ra.classList.toggle('compare', m === 'compare');
+  clearResults();
+}
+
+function setOutput(o) {
+  state.output = o;
+  document.getElementById('out-unstructured').classList.toggle('active', o === 'unstructured');
+  document.getElementById('out-structured').classList.toggle('active',   o === 'structured');
+  const sa = document.getElementById('schema-area');
+  sa.classList.toggle('hidden', o !== 'structured');
+  document.getElementById('prompt-wrap').classList.toggle('side-by-side', o === 'structured');
+}
+
+// ────────────────────────────────────────────────
+//  UI: Provider toggles
+// ────────────────────────────────────────────────
+function setSlotProvider(slot, prov) {
+  state.prov[slot] = prov;
+  PROVIDERS.forEach(p => {
+    document.getElementById(`${slot}-${p}`).className = p === prov ? `active c-${p}` : '';
+  });
+  fillDropdown(`${slot}-model`, prov);
+  document.getElementById(`${slot}-cors`).classList.toggle('hidden', prov !== 'anthropic');
+  document.getElementById(`${slot}-fetch-models`).classList.toggle('hidden', prov !== 'gemini');
+}
+
+function setSingleProvider(prov) {
+  state.prov.s = prov;
+  PROVIDERS.forEach(p => {
+    document.getElementById(`s-${p}`).className = p === prov ? `active c-${p}` : '';
+  });
+  fillDropdown('s-model', prov);
+  document.getElementById('s-cors').classList.toggle('hidden', prov !== 'anthropic');
+  document.getElementById('s-fetch-models').classList.toggle('hidden', prov !== 'gemini');
+}
+
+async function fetchGeminiModels(slot) {
+  const apiKey = document.getElementById('gemini-key').value.trim();
+  if (!apiKey) { alert('Enter your Gemini API key first.'); return; }
+
+  const btn = document.getElementById(`${slot}-fetch-models`);
+  btn.textContent = '…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // Keep only models that support generateContent
+    const models = (data.models || [])
+      .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+      .map(m => m.name.replace('models/', ''))
+      .filter(m => m.includes('gemini'));
+
+    if (!models.length) throw new Error('No generateContent models found for this key.');
+
+    const sel = document.getElementById(`${slot}-model`);
+    sel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = '↻ Fetch'; btn.disabled = false; }, 1500);
+  } catch(e) {
+    alert('Could not fetch models: ' + e.message);
+    btn.textContent = '↻ Fetch';
+    btn.disabled = false;
+  }
+}
+
+// ────────────────────────────────────────────────
+//  UI: Misc
+// ────────────────────────────────────────────────
+function toggleKey(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function loadExample() {
+  const key = document.getElementById('example-select').value;
+  if (!key) return;
+  const ex = EXAMPLES[key];
+  document.getElementById('prompt-input').value = ex.prompt;
+  if (ex.mode === 'structured') {
+    setOutput('structured');
+    document.getElementById('schema-input').value = ex.schema;
+  } else {
+    setOutput('unstructured');
+    document.getElementById('schema-input').value = '';
+  }
+}
+
+function clearAll() {
+  document.getElementById('prompt-input').value  = '';
+  document.getElementById('schema-input').value  = '';
+  document.getElementById('example-select').value = '';
+  clearResults();
+}
+
+function clearResults() {
+  const ra = document.getElementById('response-area');
+  ra.innerHTML = '';
+  ra.classList.add('hidden');
+  document.getElementById('submit-status').textContent = '';
+}
+
+// ────────────────────────────────────────────────
+//  File upload
+// ────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const keys = parseKeyFile(ev.target.result, file.name);
+    if (keys.openai)    document.getElementById('openai-key').value    = keys.openai;
+    if (keys.gemini)    document.getElementById('gemini-key').value    = keys.gemini;
+    if (keys.anthropic) document.getElementById('anthropic-key').value = keys.anthropic;
+    const found = [keys.openai && 'OpenAI', keys.gemini && 'Gemini', keys.anthropic && 'Anthropic'].filter(Boolean);
+    const el = document.getElementById('upload-status');
+    if (found.length) {
+      el.style.color = 'var(--green)';
+      el.textContent = `✓ Loaded keys for: ${found.join(', ')}`;
+    } else {
+      el.style.color = 'var(--yellow)';
+      el.textContent = '⚠ No recognisable keys found in file.';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function parseKeyFile(text, filename) {
+  const out = { openai: null, gemini: null, anthropic: null };
+  if (filename.endsWith('.csv')) {
+    for (const line of text.split('\n')) {
+      const parts = line.split(',');
+      if (parts.length < 2) continue;
+      const prov = parts[0].trim().toLowerCase();
+      const val  = parts[1].trim();
+      if (prov.includes('openai'))              out.openai    = val;
+      if (prov.includes('gemini') || prov.includes('google')) out.gemini = val;
+      if (prov.includes('anthropic'))           out.anthropic = val;
+    }
+  } else {
+    for (const line of text.split('\n')) {
+      const l = line.trim();
+      if (!l || l.startsWith('#')) continue;
+      const eq = l.indexOf('=');
+      if (eq === -1) continue;
+      const k = l.slice(0, eq).trim().toUpperCase();
+      const v = l.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
+      if (k.includes('OPENAI'))                    out.openai    = v;
+      if (k.includes('GEMINI') || k.includes('GOOGLE')) out.gemini = v;
+      if (k.includes('ANTHROPIC'))                 out.anthropic = v;
+    }
+  }
+  return out;
+}
+
+// ────────────────────────────────────────────────
+//  API calls
+// ────────────────────────────────────────────────
+async function callOpenAI(apiKey, model, prompt, structured, schema) {
+  const body = {
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 2048
+  };
+
+  if (structured && schema) {
+    let parsed;
+    try { parsed = JSON.parse(schema); }
+    catch(e) { throw new Error('Invalid JSON schema: ' + e.message); }
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: { name: 'response', schema: parsed, strict: true }
+    };
+  }
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err.error?.message || `HTTP ${res.status}`;
+    if (res.status === 401) throw new Error('Invalid API key — please check your OpenAI key.');
+    if (res.status === 429) throw new Error('Rate limit reached. Wait a moment and try again.');
+    throw new Error(`OpenAI: ${msg}`);
+  }
+
+  const data = await res.json();
+  return {
+    content: data.choices[0].message.content,
+    usage:   data.usage
+  };
+}
+
+async function callAnthropic(apiKey, model, prompt, structured, schema) {
+  let finalPrompt = prompt;
+
+  if (structured && schema) {
+    try { JSON.parse(schema); }
+    catch(e) { throw new Error('Invalid JSON schema: ' + e.message); }
+    finalPrompt = `${prompt}\n\nRespond ONLY with a valid JSON object that matches this schema — no explanation, no markdown fences:\n${schema}`;
+  }
+
+  // Anthropic does not support browser CORS without an explicit opt-in server header.
+  // This fetch will be blocked by the browser's CORS policy.
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':       'application/json',
+        'x-api-key':          apiKey,
+        'anthropic-version':  '2023-06-01'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: finalPrompt }]
+      })
+    });
+  } catch (networkErr) {
+    // CORS / network failure → friendly message
+    throw new Error('__CORS__');
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err.error?.message || `HTTP ${res.status}`;
+    if (res.status === 401) throw new Error('Invalid API key — please check your Anthropic key.');
+    if (res.status === 429) throw new Error('Rate limit reached. Wait a moment and try again.');
+    throw new Error(`Anthropic: ${msg}`);
+  }
+
+  const data = await res.json();
+  const inp  = data.usage?.input_tokens  ?? 0;
+  const out  = data.usage?.output_tokens ?? 0;
+  return {
+    content: data.content[0].text,
+    usage:   { prompt_tokens: inp, completion_tokens: out, total_tokens: inp + out }
+  };
+}
+
+async function callGemini(apiKey, model, prompt, structured, schema) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const body = { contents: [{ parts: [{ text: prompt }] }] };
+
+  if (structured && schema) {
+    let parsed;
+    try { parsed = JSON.parse(schema); }
+    catch(e) { throw new Error('Invalid JSON schema: ' + e.message); }
+    body.generationConfig = {
+      responseMimeType: 'application/json',
+      responseSchema: parsed
+    };
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err.error?.message || `HTTP ${res.status}`;
+    if (res.status === 400) throw new Error(`Gemini: ${msg}`);
+    if (res.status === 403) throw new Error(`Gemini key rejected (403): ${msg}\n\nMake sure the "Generative Language API" is enabled for your project at console.cloud.google.com.`);
+    if (res.status === 429) throw new Error(`Quota exceeded (429): ${msg}\n\nThe free tier allows ~15 requests/min. If this is your first request, try a different Gemini model or wait 60 seconds.`);
+    throw new Error(`Gemini ${res.status}: ${msg}`);
+  }
+
+  const data = await res.json();
+  const content = data.candidates[0].content.parts[0].text;
+  const u = data.usageMetadata;
+  const usage = u ? {
+    prompt_tokens:     u.promptTokenCount     ?? 0,
+    completion_tokens: u.candidatesTokenCount ?? 0,
+    total_tokens:      u.totalTokenCount      ?? 0
+  } : null;
+
+  return { content, usage };
+}
+
+async function runModel(prov, model, apiKey, prompt, structured, schema) {
+  const names = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Anthropic' };
+  if (!apiKey) throw new Error(`No API key entered for ${names[prov] || prov}.`);
+  if (prov === 'openai')    return callOpenAI(apiKey, model, prompt, structured, schema);
+  if (prov === 'gemini')    return callGemini(apiKey, model, prompt, structured, schema);
+  if (prov === 'anthropic') return callAnthropic(apiKey, model, prompt, structured, schema);
+}
+
+// ────────────────────────────────────────────────
+//  Submit handler
+// ────────────────────────────────────────────────
+async function handleSubmit() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) {
+    showStatus('⚠ Please enter a prompt.');
+    return;
+  }
+  const schema     = document.getElementById('schema-input').value.trim();
+  const structured = state.output === 'structured';
+  if (structured && !schema) {
+    showStatus('⚠ Please enter a JSON schema for structured mode.');
+    return;
+  }
+
+  showStatus('');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled    = true;
+  btn.textContent = '⏳ Running…';
+
+  const ra = document.getElementById('response-area');
+  ra.classList.remove('hidden');
+
+  if (state.mode === 'compare') await runComparison(prompt, schema, structured);
+  else                          await runSingle(prompt, schema, structured);
+
+  btn.disabled    = false;
+  btn.textContent = '▶ Run';
+}
+
+function showStatus(msg) {
+  document.getElementById('submit-status').textContent = msg;
+}
+
+async function runSingle(prompt, schema, structured) {
+  const prov   = state.prov.s;
+  const model  = document.getElementById('s-model').value;
+  const apiKey = getKey(prov);
+
+  const ra = document.getElementById('response-area');
+  ra.className = 'response-area';
+  ra.innerHTML = panelHTML('panel-s', prov, model);
+
+  setLoading('panel-s');
+  const t0 = Date.now();
+
+  try {
+    const r = await runModel(prov, model, apiKey, prompt, structured, schema);
+    setResult('panel-s', r.content, structured, elapsed(t0), r.usage);
+  } catch(err) {
+    setError('panel-s', err.message, elapsed(t0));
+  }
+}
+
+async function runComparison(prompt, schema, structured) {
+  const provA  = state.prov.a, provB  = state.prov.b;
+  const modelA = document.getElementById('a-model').value;
+  const modelB = document.getElementById('b-model').value;
+  const keyA   = getKey(provA), keyB = getKey(provB);
+
+  const ra = document.getElementById('response-area');
+  ra.className = 'response-area compare';
+  ra.innerHTML = panelHTML('panel-a', provA, modelA) + panelHTML('panel-b', provB, modelB);
+
+  setLoading('panel-a');
+  setLoading('panel-b');
+
+  const t0A = Date.now(), t0B = Date.now();
+
+  // Kick off both; update each panel as it resolves
+  const pA = runModel(provA, modelA, keyA, prompt, structured, schema)
+    .then(r  => setResult('panel-a', r.content, structured, elapsed(t0A), r.usage))
+    .catch(e => setError('panel-a', e.message, elapsed(t0A)));
+
+  const pB = runModel(provB, modelB, keyB, prompt, structured, schema)
+    .then(r  => setResult('panel-b', r.content, structured, elapsed(t0B), r.usage))
+    .catch(e => setError('panel-b', e.message, elapsed(t0B)));
+
+  await Promise.allSettled([pA, pB]);
+}
+
+function getKey(prov) {
+  const map = { openai: 'openai-key', gemini: 'gemini-key', anthropic: 'anthropic-key' };
+  return document.getElementById(map[prov]).value.trim();
+}
+
+function elapsed(t0) {
+  return ((Date.now() - t0) / 1000).toFixed(2);
+}
+
+// ────────────────────────────────────────────────
+//  Panel DOM helpers
+// ────────────────────────────────────────────────
+function panelHTML(id, prov, model) {
+  const name = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Anthropic' }[prov] || prov;
+  return `
+    <div class="r-panel" id="${id}">
+      <div class="r-head">
+        <div class="r-head-left">
+          <span class="prov-badge ${prov}">${name}</span>
+          <span class="r-model-name">${esc(model)}</span>
+        </div>
+        <div class="r-meta" id="${id}-meta"></div>
+      </div>
+      <div class="r-body loading" id="${id}-body">
+        <div class="spinner"></div> Generating…
+      </div>
+    </div>`;
+}
+
+function setLoading(id) {
+  const b = document.getElementById(`${id}-body`);
+  b.className = 'r-body loading';
+  b.innerHTML = '<div class="spinner"></div> Generating…';
+}
+
+function setResult(id, text, structured, sec, usage) {
+  const b    = document.getElementById(`${id}-body`);
+  const meta = document.getElementById(`${id}-meta`);
+
+  b.className = 'r-body';
+  meta.innerHTML = `<span>⏱ ${sec}s</span>${usage ? `<span>🔢 ${usage.total_tokens ?? '?'} tokens</span>` : ''}`;
+
+  if (structured) {
+    try {
+      const json = JSON.parse(extractJSON(text));
+      b.innerHTML = `<pre>${highlightJSON(JSON.stringify(json, null, 2))}</pre>`;
+    } catch {
+      b.innerHTML = `<pre>${esc(text)}</pre>`;
+    }
+  } else {
+    b.innerHTML = renderMd(text);
+  }
+}
+
+function setError(id, message, sec) {
+  const b    = document.getElementById(`${id}-body`);
+  const meta = document.getElementById(`${id}-meta`);
+
+  b.className = 'r-body is-error';
+  if (sec) meta.innerHTML = `<span>⏱ ${sec}s</span>`;
+
+  const display = message === '__CORS__'
+    ? "Anthropic's API doesn't allow direct browser requests (CORS). To test Anthropic models, you'd need a backend proxy. OpenAI works directly from the browser!"
+    : message;
+
+  b.innerHTML = `<div style="display:flex;gap:.5rem;">
+    <span style="font-size:1.1rem;flex-shrink:0;">⚠️</span>
+    <div style="white-space:pre-wrap;">${esc(display)}</div>
+  </div>`;
+}
+
+// ────────────────────────────────────────────────
+//  Text helpers
+// ────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function extractJSON(text) {
+  const m = text.match(/\{[\s\S]*\}/);
+  return m ? m[0] : text;
+}
+
+function highlightJSON(json) {
+  return esc(json).replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    match => {
+      let cls = 'jn';
+      if (/^"/.test(match))         cls = /:$/.test(match) ? 'jk' : 'js';
+      else if (/true|false/.test(match)) cls = 'jb';
+      else if (/null/.test(match))  cls = 'jz';
+      return `<span class="${cls}">${match}</span>`;
+    }
+  );
+}
+
+function renderMd(raw) {
+  // Escape first, then apply simple markdown transforms
+  let h = esc(raw);
+  // Fenced code blocks
+  h = h.replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  // Inline code
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // H3
+  h = h.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  // H2
+  h = h.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  // H1
+  h = h.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+  // Bullet lists — collect consecutive items
+  h = h.replace(/((?:^[•\-\*] .+\n?)+)/gm, match => {
+    const items = match.trim().split('\n')
+      .map(l => `<li>${l.replace(/^[•\-\*] /,'')}</li>`)
+      .join('');
+    return `<ul>${items}</ul>`;
+  });
+  // Numbered lists
+  h = h.replace(/((?:^\d+\. .+\n?)+)/gm, match => {
+    const items = match.trim().split('\n')
+      .map(l => `<li>${l.replace(/^\d+\. /,'')}</li>`)
+      .join('');
+    return `<ol>${items}</ol>`;
+  });
+  // Paragraphs
+  h = h.replace(/\n\n/g, '</p><p>');
+  h = h.replace(/\n/g, '<br>');
+  return `<p>${h}</p>`;
+}
+</script>
+</body>
+</html>
