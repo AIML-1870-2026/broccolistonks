@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Science Experiment Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:    #0d9488;
+      --teal-dk: #0f766e;
+      --teal-lt: #ccfbf1;
+      --amber:   #f59e0b;
+      --amber-lt:#fef3c7;
+      --indigo:  #6366f1;
+      --bg:      #f0fdf9;
+      --card:    #ffffff;
+      --text:    #134e4a;
+      --muted:   #6b7280;
+      --border:  #d1fae5;
+      --error:   #ef4444;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(13,148,136,.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(99,102,241,.07) 0%, transparent 50%);
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--teal-dk) 0%, var(--teal) 60%, #0891b2 100%);
+      color: #fff;
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
+    }
+    header h1 {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      letter-spacing: -0.5px;
+    }
+    header p {
+      margin-top: .4rem;
+      font-size: .95rem;
+      opacity: .85;
+    }
+    .beaker { font-size: 2.5rem; display: block; margin-bottom: .5rem; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .card-title {
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: .75rem;
+    }
+
+    /* ── Form elements ── */
+    label {
+      display: block;
+      font-weight: 700;
+      font-size: .9rem;
+      margin-bottom: .35rem;
+    }
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%;
+      padding: .6rem .85rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .95rem;
+      color: var(--text);
+      background: #fff;
+      transition: border-color .15s;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(13,148,136,.15);
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 520px) { .input-row { grid-template-columns: 1fr; } }
+
+    /* API key field */
+    .key-wrap { position: relative; }
+    .key-wrap input { padding-right: 2.8rem; }
+    .toggle-key {
+      position: absolute;
+      right: .7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--muted);
+      padding: .1rem;
+    }
+    .toggle-key:hover { color: var(--teal); }
+
+    /* Error messages */
+    .err {
+      color: var(--error);
+      font-size: .8rem;
+      margin-top: .3rem;
+      display: none;
+    }
+    .err.show { display: block; }
+
+    /* ── Supply chips ── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-top: .65rem;
+    }
+    .chip {
+      padding: .3rem .7rem;
+      border-radius: 999px;
+      background: var(--teal-lt);
+      color: var(--teal-dk);
+      font-size: .78rem;
+      font-weight: 700;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      user-select: none;
+    }
+    .chip:hover { background: #99f6e4; border-color: var(--teal); }
+    .chip.active { background: var(--teal); color: #fff; }
+    .chips-label {
+      font-size: .75rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: .2rem;
+      margin-top: .5rem;
+    }
+
+    /* ── Generate button ── */
+    #generateBtn {
+      width: 100%;
+      padding: .85rem;
+      background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dk) 100%);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      box-shadow: 0 4px 14px rgba(13,148,136,.35);
+    }
+    #generateBtn:hover:not(:disabled) { opacity: .92; transform: translateY(-1px); }
+    #generateBtn:active:not(:disabled) { transform: translateY(0); }
+    #generateBtn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    /* ── Result area ── */
+    #result-section { display: none; }
+    #result-section.show { display: block; }
+
+    /* loading */
+    .skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+    }
+    .skel-line {
+      height: 14px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    .skel-line.w70 { width: 70%; }
+    .skel-line.w50 { width: 50%; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* experiment output */
+    #output {
+      font-size: .95rem;
+      line-height: 1.7;
+    }
+    #output h1,#output h2,#output h3 {
+      font-family: 'Space Mono', monospace;
+      color: var(--teal-dk);
+      margin: 1rem 0 .4rem;
+    }
+    #output h1 { font-size: 1.3rem; }
+    #output h2 { font-size: 1.1rem; }
+    #output h3 { font-size: 1rem; }
+    #output p { margin-bottom: .6rem; }
+    #output ul, #output ol { padding-left: 1.4rem; margin-bottom: .6rem; }
+    #output li { margin-bottom: .2rem; }
+    #output strong { color: var(--teal-dk); }
+    #output code {
+      font-family: 'Space Mono', monospace;
+      background: var(--teal-lt);
+      padding: .1em .35em;
+      border-radius: 4px;
+      font-size: .88em;
+    }
+
+    /* difficulty badge */
+    #difficulty-badge {
+      display: inline-block;
+      padding: .25rem .75rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: .75rem;
+    }
+    .diff-easy   { background: #dcfce7; color: #15803d; }
+    .diff-medium { background: var(--amber-lt); color: #92400e; }
+    .diff-hard   { background: #fee2e2; color: #991b1b; }
+
+    /* result action buttons */
+    .result-actions {
+      display: flex;
+      gap: .6rem;
+      margin-top: 1.1rem;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      padding: .45rem .95rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background .15s, color .15s;
+    }
+    .btn-save {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: #fff;
+    }
+    .btn-save:hover { background: var(--teal-lt); }
+    .btn-save.saved { background: var(--teal); color: #fff; cursor: default; }
+    .btn-copy {
+      border-color: var(--indigo);
+      color: var(--indigo);
+      background: #fff;
+    }
+    .btn-copy:hover { background: #eef2ff; }
+    .btn-print {
+      border-color: var(--muted);
+      color: var(--muted);
+      background: #fff;
+    }
+    .btn-print:hover { background: #f3f4f6; }
+
+    /* error card */
+    .error-box {
+      background: #fef2f2;
+      border: 1.5px solid #fecaca;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      color: #991b1b;
+      font-size: .9rem;
+    }
+    .error-box strong { display: block; margin-bottom: .2rem; }
+
+    /* ── Saved experiments ── */
+    #saved-section { display: none; }
+    #saved-section.show { display: block; }
+    .saved-list { display: flex; flex-direction: column; gap: .5rem; }
+    .saved-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      padding: .6rem .9rem;
+      background: var(--teal-lt);
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: border-color .15s;
+    }
+    .saved-item:hover { border-color: var(--teal); }
+    .saved-item-title {
+      font-weight: 700;
+      font-size: .88rem;
+      color: var(--teal-dk);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .saved-item-grade {
+      font-size: .73rem;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .saved-delete {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 .2rem;
+    }
+    .saved-delete:hover { color: var(--error); }
+    .empty-saved {
+      color: var(--muted);
+      font-size: .88rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="beaker">🧪</span>
+  <h1>Science Experiment Generator</h1>
+  <p>Enter your supplies and grade level — get a ready-to-run experiment instantly.</p>
+</header>
+
+<main>
+
+  <!-- API Key -->
+  <div class="card">
+    <div class="card-title">OpenAI API Key</div>
+    <label for="apiKey">Your API key (never stored)</label>
+    <div class="key-wrap">
+      <input type="password" id="apiKey" placeholder="sk-...">
+      <button class="toggle-key" id="toggleKey" title="Show/hide key">👁️</button>
+    </div>
+    <div class="err" id="err-key">Please enter your OpenAI API key.</div>
+  </div>
+
+  <!-- Config -->
+  <div class="card">
+    <div class="card-title">Experiment Settings</div>
+    <div class="input-row">
+      <div>
+        <label for="model">Model</label>
+        <select id="model">
+          <optgroup label="GPT-4o">
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
+            <option value="chatgpt-4o-latest">chatgpt-4o-latest</option>
+          </optgroup>
+          <optgroup label="GPT-4 Turbo">
+            <option value="gpt-4-turbo">gpt-4-turbo</option>
+            <option value="gpt-4-turbo-preview">gpt-4-turbo-preview</option>
+          </optgroup>
+          <optgroup label="GPT-4">
+            <option value="gpt-4">gpt-4</option>
+          </optgroup>
+          <optgroup label="o-series (reasoning)">
+            <option value="o1">o1</option>
+            <option value="o1-mini">o1-mini</option>
+            <option value="o3-mini">o3-mini</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label for="grade">Grade Level</label>
+        <select id="grade">
+          <option value="">— select —</option>
+          <option value="K-2">K–2</option>
+          <option value="3-5">3–5</option>
+          <option value="6-8">6–8</option>
+          <option value="9-12">9–12</option>
+        </select>
+        <div class="err" id="err-grade">Please select a grade level.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplies -->
+  <div class="card">
+    <div class="card-title">Available Supplies</div>
+    <label for="supplies">What do you have on hand? (comma-separated)</label>
+    <textarea id="supplies" placeholder="e.g. vinegar, baking soda, food coloring, cups"></textarea>
+    <div class="err" id="err-supplies">Please enter at least one supply.</div>
+    <div class="chips-label">Quick-add common supplies:</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <!-- Generate -->
+  <button id="generateBtn">⚗️ Generate Experiment</button>
+
+  <!-- Result -->
+  <div class="card" id="result-section">
+    <div class="card-title">Your Experiment</div>
+    <div id="loading" class="skeleton" style="display:none">
+      <div class="skel-line" style="width:55%;height:18px"></div>
+      <div class="skel-line"></div>
+      <div class="skel-line w70"></div>
+      <div class="skel-line"></div>
+      <div class="skel-line w50"></div>
+      <div class="skel-line"></div>
+      <div class="skel-line w70"></div>
+    </div>
+    <div id="error-output"></div>
+    <div id="difficulty-badge" style="display:none"></div>
+    <div id="output"></div>
+    <div class="result-actions" id="result-actions" style="display:none">
+      <button class="action-btn btn-save" id="saveBtn">🔖 Save Experiment</button>
+      <button class="action-btn btn-copy" id="copyBtn">📋 Copy Markdown</button>
+      <button class="action-btn btn-print" id="printBtn">🖨️ Print</button>
+    </div>
+  </div>
+
+  <!-- Saved Experiments -->
+  <div class="card" id="saved-section">
+    <div class="card-title">Saved Experiments</div>
+    <div class="saved-list" id="saved-list"></div>
+  </div>
+
+</main>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────
+  let currentMarkdown = '';
+  let currentGrade = '';
+  let savedExperiments = [];
+
+  // ── Supply chips ───────────────────────────────────────────────────────
+  const SUPPLY_CHIPS = [
+    'vinegar', 'baking soda', 'food coloring', 'water', 'cups',
+    'balloons', 'salt', 'sugar', 'dish soap', 'paper towels',
+    'rubber bands', 'straws', 'tape', 'aluminum foil', 'zip-lock bags'
+  ];
+
+  const chipsEl = document.getElementById('chips');
+  const suppliesEl = document.getElementById('supplies');
+
+  SUPPLY_CHIPS.forEach(supply => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.textContent = supply;
+    chip.type = 'button';
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('active');
+      updateSuppliesFromChips();
+    });
+    chipsEl.appendChild(chip);
+  });
+
+  function updateSuppliesFromChips() {
+    const active = [...chipsEl.querySelectorAll('.chip.active')].map(c => c.textContent);
+    const manual = suppliesEl.value
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s && !SUPPLY_CHIPS.includes(s));
+    const all = [...manual, ...active];
+    suppliesEl.value = all.join(', ');
+  }
+
+  // ── API key show/hide ──────────────────────────────────────────────────
+  const apiKeyEl = document.getElementById('apiKey');
+  document.getElementById('toggleKey').addEventListener('click', () => {
+    apiKeyEl.type = apiKeyEl.type === 'password' ? 'text' : 'password';
+  });
+
+  // ── Difficulty badge ───────────────────────────────────────────────────
+  function getDifficulty(grade) {
+    if (grade === 'K-2') return { label: 'Easy', cls: 'diff-easy' };
+    if (grade === '3-5') return { label: 'Medium', cls: 'diff-medium' };
+    return { label: 'Hard', cls: 'diff-hard' };
+  }
+
+  // ── Validation ─────────────────────────────────────────────────────────
+  function validate() {
+    let ok = true;
+    const showErr = (id, cond) => {
+      const el = document.getElementById(id);
+      el.classList.toggle('show', cond);
+      if (cond) ok = false;
+    };
+    showErr('err-key',      !apiKeyEl.value.trim());
+    showErr('err-grade',    !document.getElementById('grade').value);
+    showErr('err-supplies', !suppliesEl.value.trim());
+    return ok;
+  }
+
+  // ── Loading state ──────────────────────────────────────────────────────
+  function setLoading(on) {
+    document.getElementById('loading').style.display = on ? 'flex' : 'none';
+    document.getElementById('output').innerHTML = '';
+    document.getElementById('error-output').innerHTML = '';
+    document.getElementById('difficulty-badge').style.display = 'none';
+    document.getElementById('result-actions').style.display = 'none';
+    document.getElementById('result-section').classList.add('show');
+    document.getElementById('generateBtn').disabled = on;
+  }
+
+  // ── Generate ───────────────────────────────────────────────────────────
+  document.getElementById('generateBtn').addEventListener('click', async () => {
+    if (!validate()) return;
+
+    const apiKey   = apiKeyEl.value.trim();
+    const model    = document.getElementById('model').value;
+    const grade    = document.getElementById('grade').value;
+    const supplies = suppliesEl.value.trim();
+
+    currentGrade = grade;
+    currentMarkdown = '';
+
+    setLoading(true);
+
+    const systemPrompt = `You are a creative science education expert. Generate a single, detailed, hands-on science experiment appropriate for the given grade level using only the supplies provided. Include: a fun title, objective, list of materials used, step-by-step instructions, the scientific concept being explored, and expected results. Use markdown formatting.`;
+    const userPrompt   = `Grade level: ${grade}. Available supplies: ${supplies}.`;
+
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user',   content: userPrompt   }
+          ]
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data?.error?.message || `API error ${res.status}`;
+        throw new Error(msg);
+      }
+
+      currentMarkdown = data.choices[0].message.content;
+
+      document.getElementById('loading').style.display = 'none';
+
+      // Difficulty badge
+      const diff = getDifficulty(grade);
+      const badge = document.getElementById('difficulty-badge');
+      badge.textContent = `Difficulty: ${diff.label}`;
+      badge.className = diff.cls;
+      badge.style.display = 'inline-block';
+
+      document.getElementById('output').innerHTML = marked.parse(currentMarkdown);
+      document.getElementById('result-actions').style.display = 'flex';
+
+      // Reset save button
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.textContent = '🔖 Save Experiment';
+      saveBtn.classList.remove('saved');
+      saveBtn.disabled = false;
+
+    } catch (err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-output').innerHTML = `
+        <div class="error-box">
+          <strong>Something went wrong</strong>
+          ${escapeHtml(err.message)}
+        </div>`;
+    }
+  });
+
+  // ── Save experiment ────────────────────────────────────────────────────
+  document.getElementById('saveBtn').addEventListener('click', function () {
+    if (!currentMarkdown || this.classList.contains('saved')) return;
+
+    // Extract title from first heading in markdown
+    const titleMatch = currentMarkdown.match(/^#+\s+(.+)/m);
+    const title = titleMatch ? titleMatch[1].trim() : 'Untitled Experiment';
+
+    savedExperiments.unshift({ title, grade: currentGrade, markdown: currentMarkdown });
+    this.textContent = '✅ Saved!';
+    this.classList.add('saved');
+    renderSaved();
+  });
+
+  function renderSaved() {
+    const section = document.getElementById('saved-section');
+    const list    = document.getElementById('saved-list');
+
+    if (savedExperiments.length === 0) {
+      section.classList.remove('show');
+      return;
+    }
+
+    section.classList.add('show');
+    list.innerHTML = '';
+
+    savedExperiments.forEach((exp, i) => {
+      const item = document.createElement('div');
+      item.className = 'saved-item';
+      item.innerHTML = `
+        <span class="saved-item-title">${escapeHtml(exp.title)}</span>
+        <span class="saved-item-grade">Grade ${exp.grade}</span>
+        <button class="saved-delete" title="Remove" data-i="${i}">✕</button>
+      `;
+      item.addEventListener('click', e => {
+        if (e.target.classList.contains('saved-delete')) return;
+        loadSaved(i);
+      });
+      item.querySelector('.saved-delete').addEventListener('click', e => {
+        e.stopPropagation();
+        savedExperiments.splice(i, 1);
+        renderSaved();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  function loadSaved(i) {
+    const exp = savedExperiments[i];
+    currentMarkdown = exp.markdown;
+    currentGrade    = exp.grade;
+
+    document.getElementById('result-section').classList.add('show');
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-output').innerHTML = '';
+
+    const diff = getDifficulty(exp.grade);
+    const badge = document.getElementById('difficulty-badge');
+    badge.textContent = `Difficulty: ${diff.label}`;
+    badge.className = diff.cls;
+    badge.style.display = 'inline-block';
+
+    document.getElementById('output').innerHTML = marked.parse(exp.markdown);
+    document.getElementById('result-actions').style.display = 'flex';
+
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.textContent = '✅ Saved!';
+    saveBtn.classList.add('saved');
+    saveBtn.disabled = false;
+
+    document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── Copy markdown ──────────────────────────────────────────────────────
+  document.getElementById('copyBtn').addEventListener('click', async function () {
+    if (!currentMarkdown) return;
+    try {
+      await navigator.clipboard.writeText(currentMarkdown);
+      const orig = this.textContent;
+      this.textContent = '✅ Copied!';
+      setTimeout(() => { this.textContent = orig; }, 2000);
+    } catch {
+      alert('Could not access clipboard. Please copy manually.');
+    }
+  });
+
+  // ── Print ──────────────────────────────────────────────────────────────
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+  // ── Utils ──────────────────────────────────────────────────────────────
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
