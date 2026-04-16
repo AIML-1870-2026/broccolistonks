@@ -1956,12 +1956,14 @@
     let globeInstance  = null;
     let globeInitDone  = false;
 
-    // Max visual altitude as a fraction of globe radius
-    const GLOBE_MAX_ALT = 0.6;
+    // Altitude range as a fraction of globe radius — min keeps all NEOs visibly off the surface
+    const GLOBE_MIN_ALT = 0.18;
+    const GLOBE_MAX_ALT = 1.4;
 
-    // Non-linear altitude mapping from spec
+    // Non-linear altitude mapping: closer NEOs still float above the globe (min floor)
     function missDistToAlt(distLD, maxLD) {
-      return (Math.log1p(distLD) / Math.log1p(maxLD)) * GLOBE_MAX_ALT;
+      const t = Math.log1p(distLD) / Math.log1p(maxLD);
+      return GLOBE_MIN_ALT + t * (GLOBE_MAX_ALT - GLOBE_MIN_ALT);
     }
 
     // Deterministic lat/lng spread from object id (purely illustrative)
@@ -2008,7 +2010,7 @@
           lng,
           alt:   missDistToAlt(d.distLD, maxLD),
           color: d.hazardous ? '#ff4444' : '#00d4ff',
-          size:  d.hazardous ? 0.45 : 0.3,
+          size:  d.hazardous ? 0.6 : 0.4,
           isMoon: false,
         };
       });
@@ -2157,39 +2159,64 @@
 
       const container = document.getElementById('globe-el');
 
+      // Globe radius used internally by globe.gl (default = 100 units)
+      const GLOBE_R = 100;
+
       globeInstance = Globe()(container)
         .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
         .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
-        .pointsData(points)
-        .pointLat('lat')
-        .pointLng('lng')
-        .pointAltitude('alt')
-        .pointColor('color')
-        .pointRadius('size')
-        .pointResolution(8)
-        .pointLabel(pt => pt.isMoon
+        // Render each NEO as a 3-D sphere floating in space (not a surface pillar)
+        .customLayerData(points)
+        .customThreeObject(pt => {
+          // Sphere radius: moon reference slightly larger; hazardous asteroids a bit bigger
+          const r = pt.isMoon ? 2.0 : (pt.hazardous ? 1.6 : 1.1);
+          const geo = new THREE.SphereGeometry(r, 16, 16);
+          const col = new THREE.Color(pt.color);
+          const mat = new THREE.MeshPhongMaterial({
+            color: col,
+            emissive: col,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: pt.isMoon ? 0.75 : 0.92,
+            shininess: 80,
+          });
+          return new THREE.Mesh(geo, mat);
+        })
+        .customThreeObjectUpdate((obj, pt) => {
+          // Convert geographic coords + altitude fraction → 3-D world position
+          const phi = pt.lat * Math.PI / 180;
+          const lam = pt.lng * Math.PI / 180;
+          const r   = GLOBE_R * (1 + pt.alt);
+          obj.position.set(
+            r * Math.cos(phi) * Math.sin(lam),
+            r * Math.sin(phi),
+            r * Math.cos(phi) * Math.cos(lam)
+          );
+        })
+        .customLayerLabel(pt => pt.isMoon
           ? `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#ccc;background:rgba(13,17,23,0.9);padding:6px 10px;border-radius:4px;border:1px solid #444;">Moon — 1.0 LD reference</div>`
           : `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#e8f0f8;background:rgba(13,17,23,0.9);padding:6px 10px;border-radius:4px;border:1px solid #2a3f55;">${pt.name}<br><span style="color:#7a9ab8;">${pt.distLD.toFixed(3)} LD · ${pt.velocity.toFixed(1)} km/s</span></div>`
         )
-        .onPointClick(pt => showGlobeDetail(pt))
+        .onCustomLayerClick(pt => showGlobeDetail(pt))
         .atmosphereColor('#00d4ff')
         .atmosphereAltitude(0.12);
 
       // Set initial camera position
-      globeInstance.pointOfView({ lat: 20, lng: 0, altitude: 2.2 }, 0);
+      globeInstance.pointOfView({ lat: 20, lng: 0, altitude: 3.0 }, 0);
 
-      // Fix centering and wait for globe.gl's Three.js scene to be fully built
-      // before we inject the day/night shader and position the sun.
-      setTimeout(() => {
-        globeInstance
-          .width(container.offsetWidth)
-          .height(container.offsetHeight);
-
-        setupDayNightShader(); // inject custom GLSL material onto globe sphere
-        updateSunLight();      // point sun at real current position
-        if (sunLightInterval) clearInterval(sunLightInterval);
-        sunLightInterval = setInterval(updateSunLight, 60_000);
-      }, 100);
+      // Fix centering — then wait for globe.gl to signal the scene is ready
+      // before injecting the day/night shader. onGlobeReady fires after the
+      // globe sphere mesh is in the scene, so scene.traverse reliably finds it
+      // on first load (no cached textures) and every subsequent load.
+      globeInstance
+        .width(container.offsetWidth)
+        .height(container.offsetHeight)
+        .onGlobeReady(() => {
+          setupDayNightShader();
+          updateSunLight();
+          if (sunLightInterval) clearInterval(sunLightInterval);
+          sunLightInterval = setInterval(updateSunLight, 60_000);
+        });
 
       // Count label
       document.getElementById('globe-count-label').textContent =
