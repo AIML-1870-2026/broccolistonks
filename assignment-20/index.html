@@ -860,6 +860,7 @@ function resolveHand(outcome) {
   setMsg(msgs[outcome] || outcome);
 
   // Reset for next hand
+  gamePhase = 'betting';
   currentBet = 0;
   updateBalanceUI();
   setDealEnabled(true);
